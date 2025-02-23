@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -106,9 +107,15 @@ export const useTimeBooth = () => {
 
       const EPHEMERAL_KEY = tokenResponse.client_secret.value;
 
-      // Create peer connection
+      // Create peer connection with audio transceivers
       const pc = new RTCPeerConnection();
       peerConnectionRef.current = pc;
+
+      // Add audio transceiver (required even for text-only mode)
+      pc.addTransceiver('audio', {
+        direction: 'sendrecv',
+        streams: [new MediaStream()]
+      });
 
       // Set up data channel for text communication
       const dc = pc.createDataChannel('oai-events');
@@ -127,7 +134,10 @@ export const useTimeBooth = () => {
       });
 
       // Create and set local description
-      const offer = await pc.createOffer();
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: false
+      });
       await pc.setLocalDescription(offer);
 
       // Connect to OpenAI's Realtime API
@@ -141,6 +151,12 @@ export const useTimeBooth = () => {
           "Content-Type": "application/sdp"
         },
       });
+
+      if (!sdpResponse.ok) {
+        const errorText = await sdpResponse.text();
+        console.error('OpenAI API error:', errorText);
+        throw new Error(`OpenAI API error: ${errorText}`);
+      }
 
       const answer = {
         type: "answer" as RTCSdpType,
