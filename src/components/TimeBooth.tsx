@@ -20,7 +20,6 @@ const TimeBooth: React.FC = () => {
     setLocation,
     pickupPhone,
     hangupPhone,
-    startListening,
     speak,
   } = useTimeBooth();
 
@@ -89,7 +88,6 @@ const TimeBooth: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <h3 className="text-white font-medium">Chat</h3>
                     <Button
-                      onClick={startListening}
                       disabled={isListening || isSpeaking}
                       className={cn(
                         "bg-gold hover:bg-gold/90",
