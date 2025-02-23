@@ -1,5 +1,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { XHR } from "https://deno.land/x/xhr@0.1.0/mod.ts";
+globalThis.XMLHttpRequest = XHR;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,11 +52,10 @@ serve(async (req) => {
       const MODEL_ID = "eleven_multilingual_v2"
 
       const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/stream`,
+        `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
         {
           method: 'POST',
           headers: {
-            'Accept': 'audio/mpeg',
             'xi-api-key': Deno.env.get('ELEVEN_LABS_API_KEY') ?? '',
             'Content-Type': 'application/json',
           },
