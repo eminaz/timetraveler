@@ -262,7 +262,7 @@ export const useTimeBooth = () => {
     if (state.useElevenLabs && conversation.status === 'connected') {
       try {
         setState(prev => ({ ...prev, isSpeaking: true }));
-        await conversation.sendMessage({
+        await conversation.send({
           text,
           metadata: {
             role: 'user',
