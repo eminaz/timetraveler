@@ -11,24 +11,30 @@ export type Database = {
     Tables: {
       backstories: {
         Row: {
-          backstory: string
+          combined_backstory: string | null
           created_at: string | null
+          dialogue_backstory: string | null
           id: string
           location: string
+          template_backstory: string | null
           year: number
         }
         Insert: {
-          backstory: string
+          combined_backstory?: string | null
           created_at?: string | null
+          dialogue_backstory?: string | null
           id?: string
           location: string
+          template_backstory?: string | null
           year: number
         }
         Update: {
-          backstory?: string
+          combined_backstory?: string | null
           created_at?: string | null
+          dialogue_backstory?: string | null
           id?: string
           location?: string
+          template_backstory?: string | null
           year?: number
         }
         Relationships: []
