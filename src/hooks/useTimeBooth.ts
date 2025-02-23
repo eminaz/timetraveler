@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -102,53 +101,61 @@ export const useTimeBooth = () => {
     }
   };
 
-  const connectWebSocket = () => {
+  const connectWebSocket = async () => {
     if (websocketRef.current) {
       websocketRef.current.close();
     }
 
-    const url = new URL(`wss://bxtwhvvgykntbmpwtitx.functions.supabase.co/functions/v1/chat-voice-realtime`);
-    url.searchParams.append('year', state.year.toString());
-    url.searchParams.append('location', state.location);
-    url.searchParams.append('apikey', supabase.auth.getSession()?.data.session?.access_token || '');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token || '';
 
-    const ws = new WebSocket(url);
+      const url = new URL(`wss://bxtwhvvgykntbmpwtitx.functions.supabase.co/functions/v1/chat-voice-realtime`);
+      url.searchParams.append('year', state.year.toString());
+      url.searchParams.append('location', state.location);
+      url.searchParams.append('apikey', accessToken);
 
-    console.log('Connecting to WebSocket...', url.toString());
+      const ws = new WebSocket(url);
 
-    ws.onopen = () => {
-      console.log('WebSocket connection established');
-    };
+      console.log('Connecting to WebSocket...', url.toString());
 
-    ws.onmessage = async (event) => {
-      const data = JSON.parse(event.data);
-      console.log('Received WebSocket message:', data);
-      
-      if (data.type === 'response.audio.delta') {
-        const binaryString = atob(data.delta);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
+      ws.onopen = () => {
+        console.log('WebSocket connection established');
+      };
+
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        console.log('Received WebSocket message:', data);
+        
+        if (data.type === 'response.audio.delta') {
+          const binaryString = atob(data.delta);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          await playAudio(bytes);
+        } else if (data.type === 'response.text.delta') {
+          setState(prev => ({
+            ...prev,
+            message: prev.message + data.delta
+          }));
         }
-        await playAudio(bytes);
-      } else if (data.type === 'response.text.delta') {
-        setState(prev => ({
-          ...prev,
-          message: prev.message + data.delta
-        }));
-      }
-    };
+      };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      toast.error('Connection error');
-    };
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        toast.error('Connection error');
+      };
 
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
+      ws.onclose = () => {
+        console.log('WebSocket connection closed');
+      };
 
-    websocketRef.current = ws;
+      websocketRef.current = ws;
+    } catch (error) {
+      console.error('Error connecting to WebSocket:', error);
+      toast.error('Failed to establish connection');
+    }
   };
 
   const pickupPhone = () => {
