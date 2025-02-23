@@ -12,6 +12,7 @@ interface TimeBoothState {
   isListening: boolean;
   isSpeaking: boolean;
   message: string;
+  useRealtime: boolean;
 }
 
 export const useTimeBooth = () => {
@@ -24,9 +25,56 @@ export const useTimeBooth = () => {
     isListening: false,
     isSpeaking: false,
     message: '',
+    useRealtime: false,
   });
   
   const audioContextRef = useRef<AudioContext | null>(null);
+  const websocketRef = useRef<WebSocket | null>(null);
+  const audioQueueRef = useRef<AudioQueue | null>(null);
+
+  class AudioQueue {
+    private queue: Uint8Array[] = [];
+    private isPlaying = false;
+    private audioContext: AudioContext;
+
+    constructor(audioContext: AudioContext) {
+      this.audioContext = audioContext;
+    }
+
+    async addToQueue(audioData: Uint8Array) {
+      this.queue.push(audioData);
+      if (!this.isPlaying) {
+        await this.playNext();
+      }
+    }
+
+    private async playNext() {
+      if (this.queue.length === 0) {
+        this.isPlaying = false;
+        return;
+      }
+
+      this.isPlaying = true;
+      const audioData = this.queue.shift()!;
+
+      try {
+        const audioBuffer = await this.audioContext.decodeAudioData(audioData.buffer);
+        const source = this.audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(this.audioContext.destination);
+        
+        source.onended = () => this.playNext();
+        source.start(0);
+      } catch (error) {
+        console.error('Error playing audio:', error);
+        this.playNext();
+      }
+    }
+  }
+
+  const setUseRealtime = (useRealtime: boolean) => {
+    setState(prev => ({ ...prev, useRealtime }));
+  };
 
   const setYear = (year: number) => {
     setState(prev => ({ ...prev, year }));
@@ -41,23 +89,52 @@ export const useTimeBooth = () => {
       audioContextRef.current = new AudioContext();
     }
     
+    if (!audioQueueRef.current) {
+      audioQueueRef.current = new AudioQueue(audioContextRef.current);
+    }
+
     try {
-      const audioBuffer = await audioContextRef.current.decodeAudioData(audioData.buffer);
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContextRef.current.destination);
-      
+      await audioQueueRef.current.addToQueue(audioData);
       setState(prev => ({ ...prev, isSpeaking: true }));
-      
-      source.onended = () => {
-        setState(prev => ({ ...prev, isSpeaking: false }));
-      };
-      
-      source.start(0);
     } catch (error) {
       console.error('Error playing audio:', error);
       setState(prev => ({ ...prev, isSpeaking: false }));
     }
+  };
+
+  const connectWebSocket = () => {
+    if (websocketRef.current) {
+      websocketRef.current.close();
+    }
+
+    const ws = new WebSocket(
+      `wss://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.functions.supabase.co/functions/v1/chat-voice-realtime?year=${state.year}&location=${encodeURIComponent(state.location)}`
+    );
+
+    ws.onmessage = async (event) => {
+      const data = JSON.parse(event.data);
+      
+      if (data.type === 'response.audio.delta') {
+        const binaryString = atob(data.delta);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        await playAudio(bytes);
+      } else if (data.type === 'response.text.delta') {
+        setState(prev => ({
+          ...prev,
+          message: prev.message + data.delta
+        }));
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      toast.error('Connection error');
+    };
+
+    websocketRef.current = ws;
   };
 
   const pickupPhone = () => {
@@ -66,9 +143,18 @@ export const useTimeBooth = () => {
       isRinging: false,
       isPickedUp: true,
     }));
+
+    if (state.useRealtime) {
+      connectWebSocket();
+    }
   };
 
   const hangupPhone = () => {
+    if (websocketRef.current) {
+      websocketRef.current.close();
+      websocketRef.current = null;
+    }
+
     setState(prev => ({
       ...prev,
       isRinging: true,
@@ -79,6 +165,18 @@ export const useTimeBooth = () => {
   };
 
   const speak = async (text: string) => {
+    if (state.useRealtime && websocketRef.current) {
+      websocketRef.current.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text }]
+        }
+      }));
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('chat-voice', {
         body: { 
@@ -113,6 +211,9 @@ export const useTimeBooth = () => {
       if (audioContextRef.current) {
         audioContextRef.current.close();
       }
+      if (websocketRef.current) {
+        websocketRef.current.close();
+      }
     };
   }, []);
 
@@ -123,5 +224,6 @@ export const useTimeBooth = () => {
     pickupPhone,
     hangupPhone,
     speak,
+    setUseRealtime,
   };
 };

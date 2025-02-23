@@ -3,6 +3,7 @@ import React from 'react';
 import { Phone, Mic } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
+import { Switch } from './ui/switch';
 import { useTimeBooth } from '../hooks/useTimeBooth';
 import { cn } from '../lib/utils';
 
@@ -16,11 +17,13 @@ const TimeBooth: React.FC = () => {
     isListening,
     isSpeaking,
     message,
+    useRealtime,
     setYear,
     setLocation,
     pickupPhone,
     hangupPhone,
     speak,
+    setUseRealtime,
   } = useTimeBooth();
 
   const handleSubmitMessage = async (e: React.FormEvent) => {
@@ -40,15 +43,25 @@ const TimeBooth: React.FC = () => {
           <div className="flex flex-col h-full">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-white">Time Booth</h1>
-              <div
-                className={cn(
-                  "phone flex items-center justify-center",
-                  isRinging && "animate-ring",
-                  isPickedUp && "scale-90"
-                )}
-                onClick={isPickedUp ? hangupPhone : pickupPhone}
-              >
-                <Phone className="w-8 h-8 text-booth-dark" />
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-white text-sm">Use Realtime</span>
+                  <Switch
+                    checked={useRealtime}
+                    onCheckedChange={setUseRealtime}
+                    disabled={isPickedUp}
+                  />
+                </div>
+                <div
+                  className={cn(
+                    "phone flex items-center justify-center",
+                    isRinging && "animate-ring",
+                    isPickedUp && "scale-90"
+                  )}
+                  onClick={isPickedUp ? hangupPhone : pickupPhone}
+                >
+                  <Phone className="w-8 h-8 text-booth-dark" />
+                </div>
               </div>
             </div>
 
