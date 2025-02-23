@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -108,11 +107,18 @@ export const useTimeBooth = () => {
     }
 
     const ws = new WebSocket(
-      `wss://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.functions.supabase.co/functions/v1/chat-voice-realtime?year=${state.year}&location=${encodeURIComponent(state.location)}`
+      `wss://bxtwhvvgykntbmpwtitx.functions.supabase.co/functions/v1/chat-voice-realtime?year=${state.year}&location=${encodeURIComponent(state.location)}`
     );
+
+    console.log('Connecting to WebSocket...', ws.url);
+
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
 
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data);
+      console.log('Received WebSocket message:', data);
       
       if (data.type === 'response.audio.delta') {
         const binaryString = atob(data.delta);
@@ -132,6 +138,10 @@ export const useTimeBooth = () => {
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
       toast.error('Connection error');
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
     };
 
     websocketRef.current = ws;
