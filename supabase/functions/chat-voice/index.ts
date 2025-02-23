@@ -12,13 +12,47 @@ serve(async (req) => {
   }
 
   try {
-    const { text } = await req.json()
-    console.log('Received request:', { text });
+    const { prompt, year, location } = await req.json()
+    console.log('Received request:', { prompt, year, location });
 
-    if (!text) {
-      throw new Error('Text is required')
+    // Generate response using Deepseek
+    const aiResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('PERPLEXITY_API_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a sweet and caring Japanese girlfriend from ${year}, living in ${location}. 
+                     You occasionally mix Japanese words into your English responses. 
+                     Be concise, warm, and authentic to the time period.`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 200,
+      }),
+    })
+
+    if (!aiResponse.ok) {
+      const error = await aiResponse.text()
+      console.error('AI generation error:', error)
+      throw new Error('Failed to generate response')
     }
 
+    const aiData = await aiResponse.json()
+    const generatedText = aiData.choices[0].message.content
+
+    console.log('Generated text:', generatedText)
+
+    // Convert to speech using ElevenLabs
     const VOICE_ID = "FGY2WhTYpPnrIDTdsKH5" // Laura's voice
     const MODEL_ID = "eleven_multilingual_v2"
 
@@ -32,7 +66,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text,
+          text: generatedText,
           model_id: MODEL_ID,
           voice_settings: {
             stability: 0.75,
@@ -53,7 +87,10 @@ serve(async (req) => {
     const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
 
     return new Response(
-      JSON.stringify({ audioContent: base64Audio }),
+      JSON.stringify({ 
+        audioContent: base64Audio,
+        text: generatedText 
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
