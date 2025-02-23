@@ -85,38 +85,42 @@ const TimeBooth: React.FC = () => {
               </div>
             </div>
 
+            <div className="space-y-6">
+              <div className="glass-panel p-4">
+                <label className="block text-sm font-medium text-white mb-2">
+                  Year
+                </label>
+                <input
+                  type="range"
+                  min="1800"
+                  max="2024"
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  disabled={isPickedUp}
+                  className="timeline-slider"
+                />
+                <span className="block text-center text-gold text-xl mt-2">
+                  {year}
+                </span>
+              </div>
+
+              <div className="glass-panel p-4">
+                <label className="block text-sm font-medium text-white mb-2">
+                  Location
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Enter a location..."
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  disabled={isPickedUp}
+                  className="bg-white bg-opacity-10 text-white placeholder:text-gray-400"
+                />
+              </div>
+            </div>
+
             {isPickedUp && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-500">
-                <div className="glass-panel p-4">
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Year
-                  </label>
-                  <input
-                    type="range"
-                    min="1800"
-                    max="2024"
-                    value={year}
-                    onChange={(e) => setYear(Number(e.target.value))}
-                    className="timeline-slider"
-                  />
-                  <span className="block text-center text-gold text-xl mt-2">
-                    {year}
-                  </span>
-                </div>
-
-                <div className="glass-panel p-4">
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Location
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Enter a location..."
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="bg-white bg-opacity-10 text-white placeholder:text-gray-400"
-                  />
-                </div>
-
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-500 mt-6">
                 <div className="glass-panel p-4 space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-white font-medium">Chat</h3>
@@ -168,7 +172,7 @@ const TimeBooth: React.FC = () => {
             )}
 
             {!isPickedUp && (
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center mt-6">
                 <p className="text-white text-opacity-80 text-center animate-pulse">
                   {isRinging ? "Phone is ringing..." : "Pick up the phone to begin"}
                 </p>

@@ -15,6 +15,7 @@ interface TimeBoothState {
   useRealtime: boolean;
   useElevenLabs: boolean;
   persona: 'japanese' | 'newyork';
+  generatedPrompt: string | null;
 }
 
 class AudioQueue {
@@ -70,8 +71,9 @@ export const useTimeBooth = () => {
     useRealtime: false,
     useElevenLabs: false,
     persona: 'japanese',
+    generatedPrompt: null
   });
-  
+
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -104,9 +106,34 @@ export const useTimeBooth = () => {
     }
   };
 
+  const generateBackstory = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('chat-voice', {
+        body: { 
+          prompt: `Create a detailed backstory for a girlfriend character living in ${state.location} in the year ${state.year}. Include personality traits, daily life, interests, and cultural context of the time period. Make it romantic and engaging. Keep it to 2-3 paragraphs.`,
+          useDeepseek: true
+        }
+      });
+
+      if (error) throw error;
+
+      setState(prev => ({ ...prev, generatedPrompt: data.text }));
+      return data.text;
+    } catch (error) {
+      console.error('Failed to generate backstory:', error);
+      toast.error('Failed to generate character backstory');
+      return null;
+    }
+  };
+
   const connectWebRTC = async () => {
     if (state.useElevenLabs) {
       try {
+        const backstory = await generateBackstory();
+        if (!backstory) {
+          throw new Error('Failed to generate backstory');
+        }
+
         await navigator.mediaDevices.getUserMedia({ audio: true });
 
         conversationRef.current = await Conversation.startSession({
@@ -138,12 +165,10 @@ export const useTimeBooth = () => {
           overrides: {
             agent: {
               prompt: {
-                prompt: getSystemPrompt(),
+                prompt: state.generatedPrompt!,
               },
-              firstMessage: state.persona === 'japanese' 
-                ? "Konnichiwa! I'm so happy to talk with you!" 
-                : "Hey there! I'm excited to share some New York stories with you!",
-              language: state.persona === 'japanese' ? 'ja' : 'en',
+              firstMessage: "I know you would pick it up. I've been waiting for you...",
+              language: 'en',
             },
           },
         });
