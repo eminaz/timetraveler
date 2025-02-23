@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +13,6 @@ interface TimeBoothState {
   isListening: boolean;
   isSpeaking: boolean;
   message: string;
-  useElevenLabs: boolean;
   persona: 'japanese' | 'newyork';
   generatedPrompt: string | null;
 }
@@ -67,7 +67,6 @@ export const useTimeBooth = () => {
     isListening: false,
     isSpeaking: false,
     message: '',
-    useElevenLabs: true,
     persona: 'japanese',
     generatedPrompt: null
   });
@@ -101,7 +100,9 @@ export const useTimeBooth = () => {
     try {
       const { data, error } = await supabase.functions.invoke('chat-voice', {
         body: { 
-          prompt: `Create a detailed backstory for a girlfriend character living in ${state.location} in the year ${state.year}. Include personality traits, daily life, interests, and cultural context of the time period. Make it romantic and engaging. Keep it to 2-3 paragraphs.`,
+          prompt: 'generate backstory',
+          year: state.year,
+          location: state.location,
           useDeepseek: true
         }
       });
@@ -325,7 +326,6 @@ export const useTimeBooth = () => {
     pickupPhone,
     hangupPhone,
     speak,
-    setUseElevenLabs,
     setPersona,
   };
 };
