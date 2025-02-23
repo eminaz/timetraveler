@@ -126,7 +126,7 @@ export const useTimeBooth = () => {
           onModeChange: (mode) => {
             setState(prev => ({ ...prev, isSpeaking: mode.mode === 'speaking' }));
           },
-          onMessage: (message) => {
+          onMessage: (message: { message: string; source: string }) => {
             console.log('ElevenLabs Message:', message);
             if (message.source === 'agent') {
               setState(prev => ({
@@ -135,9 +135,19 @@ export const useTimeBooth = () => {
               }));
             }
           },
+          overrides: {
+            agent: {
+              prompt: {
+                prompt: getSystemPrompt(),
+              },
+              firstMessage: state.persona === 'japanese' 
+                ? "Konnichiwa! I'm so happy to talk with you!" 
+                : "Hey there! I'm excited to share some New York stories with you!",
+              language: state.persona === 'japanese' ? 'ja' : 'en',
+            },
+          },
         });
 
-        await conversationRef.current.textInput(getSystemPrompt());
       } catch (error) {
         console.error('Failed to start ElevenLabs conversation:', error);
         toast.error('Failed to connect to ElevenLabs');
