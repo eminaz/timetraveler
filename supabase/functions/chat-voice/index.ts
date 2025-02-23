@@ -19,13 +19,13 @@ async function generateTemplateBackstory(year: number, location: string) {
 ${NEW_YORK_TEMPLATE}
 
 Important guidelines:
-- Write in third person ("She is..." not "I am...")
-- Focus on establishing the character's background, personality, and life situation
+- Write in second person ("You are..." "You work at..." exactly like the example)
+- Keep the same warm, personal tone as the example
 - Include specific cultural and historical details from ${location} in ${year}
-- Describe her job, daily life, and interests
-- Mention how she met her love and their shared experiences
+- Describe the character's personality, job, daily life, and interests
+- Mention their love story and shared experiences with their partner
 - Keep the same length and structure as the example
-- Never mention AI or roleplay - this is a real character's background`;
+- Never mention AI or roleplay - this is describing a real person's life`;
 
   const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -38,7 +38,7 @@ Important guidelines:
       messages: [
         {
           role: 'system',
-          content: `You are writing a character backstory for ${location}, ${year}. Write in third person narrative style.`
+          content: `You are writing a character description for ${location}, ${year}. Write in second person ("You are...") exactly like the example template.`
         },
         {
           role: 'user',
