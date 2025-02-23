@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Phone } from 'lucide-react';
+import { Phone, Mic } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { useTimeBooth } from '../hooks/useTimeBooth';
@@ -13,11 +13,26 @@ const TimeBooth: React.FC = () => {
     isRinging,
     isPickedUp,
     generatedImage,
+    isListening,
+    isSpeaking,
+    message,
     setYear,
     setLocation,
     pickupPhone,
     hangupPhone,
+    startListening,
+    speak,
   } = useTimeBooth();
+
+  const handleSubmitMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const input = (e.target as HTMLFormElement).elements.namedItem('message') as HTMLInputElement;
+    const text = input.value.trim();
+    if (text) {
+      await speak(text);
+      input.value = '';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex items-center justify-center">
@@ -70,6 +85,45 @@ const TimeBooth: React.FC = () => {
                   />
                 </div>
 
+                <div className="glass-panel p-4 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-white font-medium">Chat</h3>
+                    <Button
+                      onClick={startListening}
+                      disabled={isListening || isSpeaking}
+                      className={cn(
+                        "bg-gold hover:bg-gold/90",
+                        (isListening || isSpeaking) && "opacity-50"
+                      )}
+                    >
+                      <Mic className="w-4 h-4 mr-2" />
+                      {isListening ? 'Listening...' : 'Speak'}
+                    </Button>
+                  </div>
+                  
+                  <form onSubmit={handleSubmitMessage} className="flex gap-2">
+                    <Input
+                      name="message"
+                      placeholder="Type your message..."
+                      className="bg-white bg-opacity-10 text-white placeholder:text-gray-400"
+                      disabled={isListening || isSpeaking}
+                    />
+                    <Button 
+                      type="submit"
+                      disabled={isListening || isSpeaking}
+                      className="bg-gold hover:bg-gold/90"
+                    >
+                      Send
+                    </Button>
+                  </form>
+                </div>
+
+                {message && (
+                  <div className="glass-panel p-4">
+                    <p className="text-white">{message}</p>
+                  </div>
+                )}
+
                 {generatedImage && (
                   <div className="glass-panel p-4">
                     <img
@@ -79,13 +133,6 @@ const TimeBooth: React.FC = () => {
                     />
                   </div>
                 )}
-
-                <Button
-                  className="w-full bg-gold hover:bg-gold/90 text-booth-dark font-medium"
-                  onClick={() => {/* Will implement time travel logic */}}
-                >
-                  Begin Time Travel
-                </Button>
               </div>
             )}
 
