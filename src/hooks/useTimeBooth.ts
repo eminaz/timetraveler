@@ -15,6 +15,46 @@ interface TimeBoothState {
   useRealtime: boolean;
 }
 
+class AudioQueue {
+  private queue: Uint8Array[] = [];
+  private isPlaying = false;
+  private audioContext: AudioContext;
+
+  constructor(audioContext: AudioContext) {
+    this.audioContext = audioContext;
+  }
+
+  async addToQueue(audioData: Uint8Array) {
+    this.queue.push(audioData);
+    if (!this.isPlaying) {
+      await this.playNext();
+    }
+  }
+
+  private async playNext() {
+    if (this.queue.length === 0) {
+      this.isPlaying = false;
+      return;
+    }
+
+    this.isPlaying = true;
+    const audioData = this.queue.shift()!;
+
+    try {
+      const audioBuffer = await this.audioContext.decodeAudioData(audioData.buffer);
+      const source = this.audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(this.audioContext.destination);
+      
+      source.onended = () => this.playNext();
+      source.start(0);
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      this.playNext();
+    }
+  }
+}
+
 export const useTimeBooth = () => {
   const [state, setState] = useState<TimeBoothState>({
     year: 1970,
@@ -28,61 +68,10 @@ export const useTimeBooth = () => {
     useRealtime: false,
   });
   
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const websocketRef = useRef<WebSocket | null>(null);
   const audioQueueRef = useRef<AudioQueue | null>(null);
-
-  class AudioQueue {
-    private queue: Uint8Array[] = [];
-    private isPlaying = false;
-    private audioContext: AudioContext;
-
-    constructor(audioContext: AudioContext) {
-      this.audioContext = audioContext;
-    }
-
-    async addToQueue(audioData: Uint8Array) {
-      this.queue.push(audioData);
-      if (!this.isPlaying) {
-        await this.playNext();
-      }
-    }
-
-    private async playNext() {
-      if (this.queue.length === 0) {
-        this.isPlaying = false;
-        return;
-      }
-
-      this.isPlaying = true;
-      const audioData = this.queue.shift()!;
-
-      try {
-        const audioBuffer = await this.audioContext.decodeAudioData(audioData.buffer);
-        const source = this.audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(this.audioContext.destination);
-        
-        source.onended = () => this.playNext();
-        source.start(0);
-      } catch (error) {
-        console.error('Error playing audio:', error);
-        this.playNext();
-      }
-    }
-  }
-
-  const setUseRealtime = (useRealtime: boolean) => {
-    setState(prev => ({ ...prev, useRealtime }));
-  };
-
-  const setYear = (year: number) => {
-    setState(prev => ({ ...prev, year }));
-  };
-
-  const setLocation = (location: string) => {
-    setState(prev => ({ ...prev, location }));
-  };
 
   const playAudio = async (audioData: Uint8Array) => {
     if (!audioContextRef.current) {
@@ -102,69 +91,77 @@ export const useTimeBooth = () => {
     }
   };
 
-  const connectWebSocket = async () => {
-    if (websocketRef.current) {
-      websocketRef.current.close();
-    }
-
+  const connectWebRTC = async () => {
     try {
-      // Get the current session
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error || !session) {
-        toast.error('Authentication required');
-        return;
+      // Get ephemeral token from our Edge Function
+      const { data: tokenResponse, error: tokenError } = await supabase.functions.invoke('chat-voice-realtime', {
+        body: { 
+          year: state.year,
+          location: state.location
+        }
+      });
+
+      if (tokenError || !tokenResponse?.client_secret?.value) {
+        throw new Error('Failed to get ephemeral token');
       }
 
-      const url = new URL(`wss://bxtwhvvgykntbmpwtitx.functions.supabase.co/functions/v1/chat-voice-realtime`);
-      url.searchParams.append('year', state.year.toString());
-      url.searchParams.append('location', state.location);
-      url.searchParams.append('apikey', session.access_token);
+      const EPHEMERAL_KEY = tokenResponse.client_secret.value;
 
-      console.log('Connecting to WebSocket with auth...', url.toString());
+      // Create peer connection
+      const pc = new RTCPeerConnection();
+      peerConnectionRef.current = pc;
 
-      const ws = new WebSocket(url);
+      // Set up audio
+      const audioEl = document.createElement('audio');
+      audioEl.autoplay = true;
+      pc.ontrack = e => audioEl.srcObject = e.streams[0];
 
-      ws.onopen = () => {
-        console.log('WebSocket connection established');
-      };
+      // Add local audio track
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      pc.addTrack(stream.getTracks()[0]);
 
-      ws.onmessage = async (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('Received WebSocket message:', data);
-          
-          if (data.type === 'response.audio.delta') {
-            const binaryString = atob(data.delta);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-            await playAudio(bytes);
-          } else if (data.type === 'response.text.delta') {
-            setState(prev => ({
-              ...prev,
-              message: prev.message + data.delta
-            }));
-          }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
+      // Set up data channel
+      const dc = pc.createDataChannel('oai-events');
+      dataChannelRef.current = dc;
+
+      dc.addEventListener('message', (e) => {
+        const event = JSON.parse(e.data);
+        console.log('Received event:', event);
+
+        if (event.type === 'response.text.delta') {
+          setState(prev => ({
+            ...prev,
+            message: prev.message + event.delta
+          }));
         }
-      };
+      });
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        toast.error('Connection error');
-      };
+      // Create and set local description
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
 
-      ws.onclose = () => {
-        console.log('WebSocket connection closed');
-        websocketRef.current = null;
-      };
+      // Connect to OpenAI's Realtime API
+      const baseUrl = "https://api.openai.com/v1/realtime";
+      const model = "gpt-4o-realtime-preview-2024-10-01";
+      const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
+        method: "POST",
+        body: offer.sdp,
+        headers: {
+          Authorization: `Bearer ${EPHEMERAL_KEY}`,
+          "Content-Type": "application/sdp"
+        },
+      });
 
-      websocketRef.current = ws;
+      const answer = {
+        type: "answer" as RTCSdpType,
+        sdp: await sdpResponse.text(),
+      };
+      
+      await pc.setRemoteDescription(answer);
+      console.log("WebRTC connection established");
+
     } catch (error) {
-      console.error('Error connecting to WebSocket:', error);
+      console.error('Error connecting to WebRTC:', error);
       toast.error('Failed to establish connection');
     }
   };
@@ -177,14 +174,18 @@ export const useTimeBooth = () => {
     }));
 
     if (state.useRealtime) {
-      await connectWebSocket();
+      await connectWebRTC();
     }
   };
 
   const hangupPhone = () => {
-    if (websocketRef.current) {
-      websocketRef.current.close();
-      websocketRef.current = null;
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (dataChannelRef.current) {
+      dataChannelRef.current.close();
+      dataChannelRef.current = null;
     }
 
     setState(prev => ({
@@ -197,15 +198,23 @@ export const useTimeBooth = () => {
   };
 
   const speak = async (text: string) => {
-    if (state.useRealtime && websocketRef.current) {
-      websocketRef.current.send(JSON.stringify({
+    if (state.useRealtime && dataChannelRef.current?.readyState === 'open') {
+      const event = {
         type: 'conversation.item.create',
         item: {
           type: 'message',
           role: 'user',
-          content: [{ type: 'input_text', text }]
+          content: [
+            {
+              type: 'input_text',
+              text
+            }
+          ]
         }
-      }));
+      };
+
+      dataChannelRef.current.send(JSON.stringify(event));
+      dataChannelRef.current.send(JSON.stringify({type: 'response.create'}));
       return;
     }
 
@@ -238,13 +247,28 @@ export const useTimeBooth = () => {
     }
   };
 
+  const setYear = (year: number) => {
+    setState(prev => ({ ...prev, year }));
+  };
+
+  const setLocation = (location: string) => {
+    setState(prev => ({ ...prev, location }));
+  };
+
+  const setUseRealtime = (useRealtime: boolean) => {
+    setState(prev => ({ ...prev, useRealtime }));
+  };
+
   useEffect(() => {
     return () => {
       if (audioContextRef.current) {
         audioContextRef.current.close();
       }
-      if (websocketRef.current) {
-        websocketRef.current.close();
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+      }
+      if (dataChannelRef.current) {
+        dataChannelRef.current.close();
       }
     };
   }, []);
