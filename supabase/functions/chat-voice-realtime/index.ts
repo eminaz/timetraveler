@@ -17,11 +17,11 @@ serve(async (req) => {
     });
   }
 
-  // Verify authentication
-  const authHeader = req.headers.get('authorization');
-  const apiKey = req.headers.get('apikey');
+  // Verify authentication from query parameter
+  const url = new URL(req.url);
+  const apiKey = url.searchParams.get('apikey');
 
-  if (!authHeader || !apiKey) {
+  if (!apiKey) {
     return new Response('Unauthorized', { 
       status: 401,
       headers: corsHeaders
@@ -116,3 +116,4 @@ serve(async (req) => {
     });
   }
 });
+

@@ -109,15 +109,9 @@ export const useTimeBooth = () => {
     const url = new URL(`wss://bxtwhvvgykntbmpwtitx.functions.supabase.co/functions/v1/chat-voice-realtime`);
     url.searchParams.append('year', state.year.toString());
     url.searchParams.append('location', state.location);
+    url.searchParams.append('apikey', supabase.supabaseClient.auth.session()?.access_token || '');
 
-    const anonKey = supabase.supabaseKey;
-
-    const ws = new WebSocket(url, {
-      headers: {
-        'Authorization': `Bearer ${anonKey}`,
-        'apikey': anonKey
-      }
-    });
+    const ws = new WebSocket(url);
 
     console.log('Connecting to WebSocket...', url.toString());
 
