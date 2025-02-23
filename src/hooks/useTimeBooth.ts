@@ -76,8 +76,14 @@ export const useTimeBooth = () => {
   const audioQueueRef = useRef<AudioQueue | null>(null);
 
   const conversation = useConversation({
-    onConnect: () => console.log('ElevenLabs Connected'),
-    onDisconnect: () => console.log('ElevenLabs Disconnected'),
+    onConnect: () => {
+      console.log('ElevenLabs Connected');
+      setState(prev => ({ ...prev, isListening: true }));
+    },
+    onDisconnect: () => {
+      console.log('ElevenLabs Disconnected');
+      setState(prev => ({ ...prev, isListening: false }));
+    },
     onMessage: (message) => {
       console.log('ElevenLabs Message:', message);
       if (message.type === 'response.text.delta') {
@@ -255,7 +261,8 @@ export const useTimeBooth = () => {
   const speak = async (text: string) => {
     if (state.useElevenLabs && conversation.status === 'connected') {
       try {
-        await conversation.startSession({
+        setState(prev => ({ ...prev, isSpeaking: true }));
+        await conversation.sendMessage({
           text,
           metadata: {
             role: 'user',
@@ -266,6 +273,8 @@ export const useTimeBooth = () => {
       } catch (error) {
         console.error('Failed to send message to ElevenLabs:', error);
         toast.error('Failed to send message');
+      } finally {
+        setState(prev => ({ ...prev, isSpeaking: false }));
       }
       return;
     }
