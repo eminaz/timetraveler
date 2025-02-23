@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -107,38 +108,47 @@ export const useTimeBooth = () => {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token || '';
+      // Get the current session
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
+        toast.error('Authentication required');
+        return;
+      }
 
       const url = new URL(`wss://bxtwhvvgykntbmpwtitx.functions.supabase.co/functions/v1/chat-voice-realtime`);
       url.searchParams.append('year', state.year.toString());
       url.searchParams.append('location', state.location);
-      url.searchParams.append('apikey', accessToken);
+      url.searchParams.append('apikey', session.access_token);
+
+      console.log('Connecting to WebSocket with auth...', url.toString());
 
       const ws = new WebSocket(url);
-
-      console.log('Connecting to WebSocket...', url.toString());
 
       ws.onopen = () => {
         console.log('WebSocket connection established');
       };
 
       ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        console.log('Received WebSocket message:', data);
-        
-        if (data.type === 'response.audio.delta') {
-          const binaryString = atob(data.delta);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received WebSocket message:', data);
+          
+          if (data.type === 'response.audio.delta') {
+            const binaryString = atob(data.delta);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            await playAudio(bytes);
+          } else if (data.type === 'response.text.delta') {
+            setState(prev => ({
+              ...prev,
+              message: prev.message + data.delta
+            }));
           }
-          await playAudio(bytes);
-        } else if (data.type === 'response.text.delta') {
-          setState(prev => ({
-            ...prev,
-            message: prev.message + data.delta
-          }));
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
         }
       };
 
@@ -149,6 +159,7 @@ export const useTimeBooth = () => {
 
       ws.onclose = () => {
         console.log('WebSocket connection closed');
+        websocketRef.current = null;
       };
 
       websocketRef.current = ws;
@@ -158,7 +169,7 @@ export const useTimeBooth = () => {
     }
   };
 
-  const pickupPhone = () => {
+  const pickupPhone = async () => {
     setState(prev => ({
       ...prev,
       isRinging: false,
@@ -166,7 +177,7 @@ export const useTimeBooth = () => {
     }));
 
     if (state.useRealtime) {
-      connectWebSocket();
+      await connectWebSocket();
     }
   };
 
