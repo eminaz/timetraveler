@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
-import { useConversation } from '@11labs/react';
+import { Conversation } from '@11labs/client';
 
 interface TimeBoothState {
   year: number;
@@ -74,30 +74,7 @@ export const useTimeBooth = () => {
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioQueue | null>(null);
-
-  const conversation = useConversation({
-    onConnect: () => {
-      console.log('ElevenLabs Connected');
-      setState(prev => ({ ...prev, isListening: true }));
-    },
-    onDisconnect: () => {
-      console.log('ElevenLabs Disconnected');
-      setState(prev => ({ ...prev, isListening: false }));
-    },
-    onMessage: (message) => {
-      console.log('ElevenLabs Message:', message);
-      if (message.type === 'response.text.delta') {
-        setState(prev => ({
-          ...prev,
-          message: prev.message + message.delta
-        }));
-      }
-    },
-    onError: (error) => {
-      console.error('ElevenLabs Error:', error);
-      toast.error('ElevenLabs connection error');
-    },
-  });
+  const conversationRef = useRef<any>(null);
 
   const playAudio = async (audioData: Uint8Array) => {
     if (!audioContextRef.current) {
@@ -122,8 +99,32 @@ export const useTimeBooth = () => {
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
 
-        await conversation.startSession({
+        conversationRef.current = await Conversation.startSession({
           agentId: 'T3V3l6ob4NjAgncL6RTX',
+          onConnect: () => {
+            console.log('ElevenLabs Connected');
+            setState(prev => ({ ...prev, isListening: true }));
+          },
+          onDisconnect: () => {
+            console.log('ElevenLabs Disconnected');
+            setState(prev => ({ ...prev, isListening: false }));
+          },
+          onError: (error) => {
+            console.error('ElevenLabs Error:', error);
+            toast.error('ElevenLabs connection error');
+          },
+          onModeChange: (mode) => {
+            setState(prev => ({ ...prev, isSpeaking: mode.mode === 'speaking' }));
+          },
+          onMessage: (message) => {
+            console.log('ElevenLabs Message:', message);
+            if (message.type === 'response.text.delta') {
+              setState(prev => ({
+                ...prev,
+                message: prev.message + message.delta
+              }));
+            }
+          },
         });
       } catch (error) {
         console.error('Failed to start ElevenLabs conversation:', error);
@@ -236,8 +237,9 @@ export const useTimeBooth = () => {
   };
 
   const hangupPhone = () => {
-    if (state.useElevenLabs) {
-      conversation.endSession();
+    if (state.useElevenLabs && conversationRef.current) {
+      conversationRef.current.endSession();
+      conversationRef.current = null;
     } else {
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
@@ -259,21 +261,13 @@ export const useTimeBooth = () => {
   };
 
   const speak = async (text: string) => {
-    if (state.useElevenLabs && conversation.status === 'connected') {
+    if (state.useElevenLabs && conversationRef.current) {
       try {
         setState(prev => ({ ...prev, isSpeaking: true }));
-        await conversation.send({
-          text,
-          metadata: {
-            role: 'user',
-            content: text,
-            type: 'message'
-          }
-        });
+        await conversationRef.current.textInput(text);
       } catch (error) {
         console.error('Failed to send message to ElevenLabs:', error);
         toast.error('Failed to send message');
-      } finally {
         setState(prev => ({ ...prev, isSpeaking: false }));
       }
       return;
@@ -350,11 +344,11 @@ export const useTimeBooth = () => {
       if (dataChannelRef.current) {
         dataChannelRef.current.close();
       }
-      if (conversation.status === 'connected') {
-        conversation.endSession();
+      if (conversationRef.current) {
+        conversationRef.current.endSession();
       }
     };
-  }, [conversation]);
+  }, []);
 
   return {
     ...state,
