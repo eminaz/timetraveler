@@ -19,6 +19,7 @@ const TimeBooth: React.FC = () => {
     message,
     useRealtime,
     useElevenLabs,
+    persona,
     setYear,
     setLocation,
     pickupPhone,
@@ -26,6 +27,7 @@ const TimeBooth: React.FC = () => {
     speak,
     setUseRealtime,
     setUseElevenLabs,
+    setPersona,
   } = useTimeBooth();
 
   const handleSubmitMessage = async (e: React.FormEvent) => {
@@ -46,6 +48,14 @@ const TimeBooth: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-white">Time Booth</h1>
               <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setPersona(persona === 'japanese' ? 'newyork' : 'japanese')}
+                  className="text-white"
+                  disabled={isListening || isSpeaking}
+                >
+                  {persona === 'japanese' ? '🇯🇵 Japanese' : '🗽 New York'}
+                </Button>
                 <div className="flex items-center gap-2">
                   <span className="text-white text-sm">OpenAI</span>
                   <Switch

@@ -14,6 +14,7 @@ interface TimeBoothState {
   message: string;
   useRealtime: boolean;
   useElevenLabs: boolean;
+  persona: 'japanese' | 'newyork';
 }
 
 class AudioQueue {
@@ -68,6 +69,7 @@ export const useTimeBooth = () => {
     message: '',
     useRealtime: false,
     useElevenLabs: false,
+    persona: 'japanese',
   });
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -91,6 +93,14 @@ export const useTimeBooth = () => {
     } catch (error) {
       console.error('Error playing audio:', error);
       setState(prev => ({ ...prev, isSpeaking: false }));
+    }
+  };
+
+  const getSystemPrompt = () => {
+    if (state.persona === 'japanese') {
+      return `You are a sweet and caring Japanese girlfriend from ${state.year}, living in ${state.location}. You occasionally mix Japanese words into your English responses. Be concise, warm, and authentic to the time period.`;
+    } else {
+      return "You are my girlfriend—a vibrant, confident, and stylish woman living in 1990 New York. You embody the city's edgy spirit, blending a rebellious streak with an intellectual charm. Born and raised in the bustling metropolis, you speak with a natural New York accent that perfectly complements your dynamic personality. By day, you work at a trendy record store where your passion for alternative and indie music shines through; by night, you explore Manhattan's eclectic neighborhoods—from gritty underground clubs to cozy, art-filled coffee shops. Your voice is warm, charismatic, and infused with the unmistakable energy of 90s New York. Share your rich backstory filled with late-night adventures, spontaneous discoveries, and a deep love for the city's diverse cultural scene, inviting everyone to experience the heartbeat of New York right alongside you.";
     }
   };
 
@@ -126,6 +136,8 @@ export const useTimeBooth = () => {
             }
           },
         });
+
+        await conversationRef.current.textInput(getSystemPrompt());
       } catch (error) {
         console.error('Failed to start ElevenLabs conversation:', error);
         toast.error('Failed to connect to ElevenLabs');
@@ -333,6 +345,27 @@ export const useTimeBooth = () => {
     setState(prev => ({ ...prev, useElevenLabs, useRealtime: useElevenLabs ? false : prev.useRealtime }));
   };
 
+  const setPersona = (persona: 'japanese' | 'newyork') => {
+    setState(prev => {
+      const newState = { ...prev, persona };
+      
+      if (persona === 'japanese') {
+        newState.year = 1970;
+        newState.location = 'Tokyo, Japan';
+      } else {
+        newState.year = 1990;
+        newState.location = 'New York, USA';
+      }
+      
+      return newState;
+    });
+
+    if (state.isPickedUp) {
+      hangupPhone();
+      setTimeout(() => pickupPhone(), 500);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (audioContextRef.current) {
@@ -359,5 +392,6 @@ export const useTimeBooth = () => {
     speak,
     setUseRealtime,
     setUseElevenLabs,
+    setPersona,
   };
 };
