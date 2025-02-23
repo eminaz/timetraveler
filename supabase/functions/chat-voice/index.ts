@@ -12,8 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, year, location } = await req.json()
-    console.log('Received request:', { prompt, year, location });
+    const { prompt, useDeepseek } = await req.json()
+    console.log('Received request:', { prompt, useDeepseek });
 
     // Generate response using Deepseek
     console.log('Making request to Deepseek API...');
@@ -26,12 +26,6 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          {
-            role: 'system',
-            content: `You are a sweet and caring Japanese girlfriend from ${year}, living in ${location}. 
-                     You occasionally mix Japanese words into your English responses. 
-                     Be concise, warm, and authentic to the time period.`
-          },
           {
             role: 'user',
             content: prompt
@@ -51,46 +45,11 @@ serve(async (req) => {
     const aiData = await aiResponse.json()
     const generatedText = aiData.choices[0].message.content
 
-    console.log('Generated text:', generatedText)
-
-    // Convert to speech using ElevenLabs
-    const VOICE_ID = "FGY2WhTYpPnrIDTdsKH5" // Laura's voice
-    const MODEL_ID = "eleven_multilingual_v2"
-
-    console.log('Making request to ElevenLabs API...');
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
-      {
-        method: 'POST',
-        headers: {
-          'xi-api-key': Deno.env.get('ELEVEN_LABS_API_KEY') ?? '',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: generatedText,
-          model_id: MODEL_ID,
-          voice_settings: {
-            stability: 0.75,
-            similarity_boost: 0.75,
-          }
-        }),
-      }
-    )
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ElevenLabs API error:', errorText);
-      throw new Error(`Failed to generate speech: ${errorText}`);
-    }
-
-    console.log('Successfully generated speech');
-    const arrayBuffer = await response.arrayBuffer()
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    console.log('Generated backstory:', generatedText)
 
     return new Response(
       JSON.stringify({ 
-        audioContent: base64Audio,
-        text: generatedText 
+        text: generatedText
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Phone, Mic } from 'lucide-react';
 import { Input } from './ui/input';
@@ -17,16 +16,12 @@ const TimeBooth: React.FC = () => {
     isListening,
     isSpeaking,
     message,
-    useRealtime,
-    useElevenLabs,
     persona,
     setYear,
     setLocation,
     pickupPhone,
     hangupPhone,
     speak,
-    setUseRealtime,
-    setUseElevenLabs,
     setPersona,
   } = useTimeBooth();
 
@@ -56,22 +51,6 @@ const TimeBooth: React.FC = () => {
                 >
                   {persona === 'japanese' ? '🇯🇵 Japanese' : '🗽 New York'}
                 </Button>
-                <div className="flex items-center gap-2">
-                  <span className="text-white text-sm">OpenAI</span>
-                  <Switch
-                    checked={useRealtime}
-                    onCheckedChange={setUseRealtime}
-                    disabled={isPickedUp || useElevenLabs}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-white text-sm">ElevenLabs</span>
-                  <Switch
-                    checked={useElevenLabs}
-                    onCheckedChange={setUseElevenLabs}
-                    disabled={isPickedUp || useRealtime}
-                  />
-                </div>
                 <div
                   className={cn(
                     "phone flex items-center justify-center",

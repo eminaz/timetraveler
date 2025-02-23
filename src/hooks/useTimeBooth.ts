@@ -12,7 +12,6 @@ interface TimeBoothState {
   isListening: boolean;
   isSpeaking: boolean;
   message: string;
-  useRealtime: boolean;
   useElevenLabs: boolean;
   persona: 'japanese' | 'newyork';
   generatedPrompt: string | null;
@@ -68,8 +67,7 @@ export const useTimeBooth = () => {
     isListening: false,
     isSpeaking: false,
     message: '',
-    useRealtime: false,
-    useElevenLabs: false,
+    useElevenLabs: true,
     persona: 'japanese',
     generatedPrompt: null
   });
@@ -98,15 +96,8 @@ export const useTimeBooth = () => {
     }
   };
 
-  const getSystemPrompt = () => {
-    if (state.persona === 'japanese') {
-      return `You are a sweet and caring Japanese girlfriend from ${state.year}, living in ${state.location}. You occasionally mix Japanese words into your English responses. Be concise, warm, and authentic to the time period.`;
-    } else {
-      return "You are my girlfriend—a vibrant, confident, and stylish woman living in 1990 New York. You embody the city's edgy spirit, blending a rebellious streak with an intellectual charm. Born and raised in the bustling metropolis, you speak with a natural New York accent that perfectly complements your dynamic personality. By day, you work at a trendy record store where your passion for alternative and indie music shines through; by night, you explore Manhattan's eclectic neighborhoods—from gritty underground clubs to cozy, art-filled coffee shops. Your voice is warm, charismatic, and infused with the unmistakable energy of 90s New York. Share your rich backstory filled with late-night adventures, spontaneous discoveries, and a deep love for the city's diverse cultural scene, inviting everyone to experience the heartbeat of New York right alongside you.";
-    }
-  };
-
   const generateBackstory = async () => {
+    console.log('Generating backstory for:', { year: state.year, location: state.location });
     try {
       const { data, error } = await supabase.functions.invoke('chat-voice', {
         body: { 
@@ -115,8 +106,12 @@ export const useTimeBooth = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
 
+      console.log('Generated backstory:', data.text);
       setState(prev => ({ ...prev, generatedPrompt: data.text }));
       return data.text;
     } catch (error) {
@@ -127,147 +122,58 @@ export const useTimeBooth = () => {
   };
 
   const connectWebRTC = async () => {
-    if (state.useElevenLabs) {
-      try {
-        const backstory = await generateBackstory();
-        if (!backstory) {
-          throw new Error('Failed to generate backstory');
-        }
-
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-
-        conversationRef.current = await Conversation.startSession({
-          agentId: 'T3V3l6ob4NjAgncL6RTX',
-          onConnect: () => {
-            console.log('ElevenLabs Connected');
-            setState(prev => ({ ...prev, isListening: true }));
-          },
-          onDisconnect: () => {
-            console.log('ElevenLabs Disconnected');
-            setState(prev => ({ ...prev, isListening: false }));
-          },
-          onError: (error) => {
-            console.error('ElevenLabs Error:', error);
-            toast.error('ElevenLabs connection error');
-          },
-          onModeChange: (mode) => {
-            setState(prev => ({ ...prev, isSpeaking: mode.mode === 'speaking' }));
-          },
-          onMessage: (message: { message: string; source: string }) => {
-            console.log('ElevenLabs Message:', message);
-            if (message.source === 'agent') {
-              setState(prev => ({
-                ...prev,
-                message: prev.message + message.message
-              }));
-            }
-          },
-          overrides: {
-            agent: {
-              prompt: {
-                prompt: state.generatedPrompt!,
-              },
-              firstMessage: "I know you would pick it up. I've been waiting for you...",
-              language: 'en',
-            },
-          },
-        });
-
-      } catch (error) {
-        console.error('Failed to start ElevenLabs conversation:', error);
-        toast.error('Failed to connect to ElevenLabs');
-      }
-      return;
-    }
-
     try {
-      const { data: tokenResponse, error: tokenError } = await supabase.functions.invoke('chat-voice-realtime', {
-        body: { 
-          year: state.year,
-          location: state.location
-        }
-      });
-
-      if (tokenError || !tokenResponse?.client_secret?.value) {
-        throw new Error('Failed to get ephemeral token');
+      console.log('Starting conversation...');
+      const backstory = await generateBackstory();
+      if (!backstory) {
+        throw new Error('Failed to generate backstory');
       }
 
-      const EPHEMERAL_KEY = tokenResponse.client_secret.value;
+      console.log('Requesting microphone access...');
+      await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      const pc = new RTCPeerConnection();
-      peerConnectionRef.current = pc;
-
-      pc.addTransceiver('audio', {
-        direction: 'sendrecv',
-        streams: [new MediaStream()]
-      });
-
-      const dc = pc.createDataChannel('oai-events');
-      dataChannelRef.current = dc;
-
-      dc.addEventListener('message', (e) => {
-        const event = JSON.parse(e.data);
-        console.log('Received event:', event);
-
-        if (event.type === 'session.created') {
-          const sessionConfig = {
-            type: 'session.update',
-            session: {
-              modalities: ["text"],
-              instructions: `You are a sweet and caring Japanese girlfriend from ${state.year}, living in ${state.location}. You occasionally mix Japanese words into your English responses. Be concise, warm, and authentic to the time period.`,
-              tool_choice: "auto",
-              temperature: 0.8,
-              max_response_output_tokens: "inf"
-            }
-          };
-          dc.send(JSON.stringify(sessionConfig));
-        } else if (event.type === 'response.text.delta') {
-          setState(prev => ({
-            ...prev,
-            message: prev.message + event.delta
-          }));
-        } else if (event.type === 'response.done') {
-          if (event.response.status === 'failed') {
-            console.error('Response failed:', event.response.status_details);
-            toast.error('Failed to get response');
+      console.log('Initializing ElevenLabs session...');
+      conversationRef.current = await Conversation.startSession({
+        agentId: 'T3V3l6ob4NjAgncL6RTX',
+        onConnect: () => {
+          console.log('ElevenLabs Connected');
+          setState(prev => ({ ...prev, isListening: true }));
+        },
+        onDisconnect: () => {
+          console.log('ElevenLabs Disconnected');
+          setState(prev => ({ ...prev, isListening: false }));
+        },
+        onError: (error) => {
+          console.error('ElevenLabs Error:', error);
+          toast.error('ElevenLabs connection error');
+        },
+        onModeChange: (mode) => {
+          console.log('Mode changed:', mode);
+          setState(prev => ({ ...prev, isSpeaking: mode.mode === 'speaking' }));
+        },
+        onMessage: (message: { message: string; source: string }) => {
+          console.log('ElevenLabs Message:', message);
+          if (message.source === 'agent') {
+            setState(prev => ({
+              ...prev,
+              message: prev.message + message.message
+            }));
           }
-        }
-      });
-
-      const offer = await pc.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: false
-      });
-      await pc.setLocalDescription(offer);
-
-      const baseUrl = "https://api.openai.com/v1/realtime";
-      const model = "gpt-4o-mini";
-      const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
-        method: "POST",
-        body: offer.sdp,
-        headers: {
-          Authorization: `Bearer ${EPHEMERAL_KEY}`,
-          "Content-Type": "application/sdp"
+        },
+        overrides: {
+          agent: {
+            prompt: {
+              prompt: backstory,
+            },
+            firstMessage: "I know you would pick it up. I've been waiting for you...",
+            language: 'en',
+          },
         },
       });
 
-      if (!sdpResponse.ok) {
-        const errorText = await sdpResponse.text();
-        console.error('OpenAI API error:', errorText);
-        throw new Error(`OpenAI API error: ${errorText}`);
-      }
-
-      const answer = {
-        type: "answer" as RTCSdpType,
-        sdp: await sdpResponse.text(),
-      };
-      
-      await pc.setRemoteDescription(answer);
-      console.log("WebRTC connection established");
-
     } catch (error) {
-      console.error('Error connecting to WebRTC:', error);
-      toast.error('Failed to establish connection');
+      console.error('Failed to start conversation:', error);
+      toast.error('Failed to start conversation');
     }
   };
 
@@ -278,9 +184,7 @@ export const useTimeBooth = () => {
       isPickedUp: true,
     }));
 
-    if (state.useRealtime || state.useElevenLabs) {
-      await connectWebRTC();
-    }
+    await connectWebRTC();
   };
 
   const hangupPhone = () => {
@@ -372,12 +276,8 @@ export const useTimeBooth = () => {
     setState(prev => ({ ...prev, location }));
   };
 
-  const setUseRealtime = (useRealtime: boolean) => {
-    setState(prev => ({ ...prev, useRealtime, useElevenLabs: useRealtime ? false : prev.useElevenLabs }));
-  };
-
   const setUseElevenLabs = (useElevenLabs: boolean) => {
-    setState(prev => ({ ...prev, useElevenLabs, useRealtime: useElevenLabs ? false : prev.useRealtime }));
+    setState(prev => ({ ...prev, useElevenLabs }));
   };
 
   const setPersona = (persona: 'japanese' | 'newyork') => {
@@ -425,7 +325,6 @@ export const useTimeBooth = () => {
     pickupPhone,
     hangupPhone,
     speak,
-    setUseRealtime,
     setUseElevenLabs,
     setPersona,
   };
