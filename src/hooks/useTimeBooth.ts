@@ -127,7 +127,6 @@ export const useTimeBooth = () => {
     }
 
     try {
-      // Get ephemeral token from our Edge Function
       const { data: tokenResponse, error: tokenError } = await supabase.functions.invoke('chat-voice-realtime', {
         body: { 
           year: state.year,
@@ -141,17 +140,14 @@ export const useTimeBooth = () => {
 
       const EPHEMERAL_KEY = tokenResponse.client_secret.value;
 
-      // Create peer connection with audio transceivers
       const pc = new RTCPeerConnection();
       peerConnectionRef.current = pc;
 
-      // Add audio transceiver (required even for text-only mode)
       pc.addTransceiver('audio', {
         direction: 'sendrecv',
         streams: [new MediaStream()]
       });
 
-      // Set up data channel for text communication
       const dc = pc.createDataChannel('oai-events');
       dataChannelRef.current = dc;
 
@@ -160,7 +156,6 @@ export const useTimeBooth = () => {
         console.log('Received event:', event);
 
         if (event.type === 'session.created') {
-          // Send session configuration after session is created
           const sessionConfig = {
             type: 'session.update',
             session: {
@@ -185,14 +180,12 @@ export const useTimeBooth = () => {
         }
       });
 
-      // Create and set local description
       const offer = await pc.createOffer({
         offerToReceiveAudio: true,
         offerToReceiveVideo: false
       });
       await pc.setLocalDescription(offer);
 
-      // Connect to OpenAI's Realtime API
       const baseUrl = "https://api.openai.com/v1/realtime";
       const model = "gpt-4o-mini";
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
@@ -261,15 +254,19 @@ export const useTimeBooth = () => {
 
   const speak = async (text: string) => {
     if (state.useElevenLabs && conversation.status === 'connected') {
-      const event = {
-        type: 'conversation.item.create',
-        item: {
-          type: 'message',
-          role: 'user',
-          content: [{ type: 'input_text', text }]
-        }
-      };
-      conversation.send(JSON.stringify(event));
+      try {
+        await conversation.startSession({
+          text,
+          metadata: {
+            role: 'user',
+            content: text,
+            type: 'message'
+          }
+        });
+      } catch (error) {
+        console.error('Failed to send message to ElevenLabs:', error);
+        toast.error('Failed to send message');
+      }
       return;
     }
 
