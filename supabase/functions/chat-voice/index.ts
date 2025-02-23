@@ -93,9 +93,10 @@ But instead, make it about you living in ${location} in the year ${year}. You ar
     if (insertError) {
       console.error('Failed to store backstory:', insertError);
       // Don't throw here, we still want to return the generated text
+    } else {
+      console.log('Successfully stored new backstory in database');
     }
 
-    console.log('Generated and stored new backstory');
     return new Response(
       JSON.stringify({ text: generatedText }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
