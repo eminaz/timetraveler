@@ -84,13 +84,13 @@ export const useTimeBooth = () => {
       toast.info('Listening...');
     };
 
-    recognition.onresult = async (event) => {
+    recognition.onresult = async (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript;
       setState(prev => ({ ...prev, message: transcript }));
       await speak(transcript);
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: SpeechRecognitionError) => {
       console.error('Speech recognition error:', event.error);
       setState(prev => ({ ...prev, isListening: false }));
       toast.error('Error while listening');
