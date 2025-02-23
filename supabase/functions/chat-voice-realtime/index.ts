@@ -17,6 +17,17 @@ serve(async (req) => {
     });
   }
 
+  // Verify authentication
+  const authHeader = req.headers.get('authorization');
+  const apiKey = req.headers.get('apikey');
+
+  if (!authHeader || !apiKey) {
+    return new Response('Unauthorized', { 
+      status: 401,
+      headers: corsHeaders
+    });
+  }
+
   const upgradeHeader = req.headers.get("upgrade") || "";
   if (upgradeHeader.toLowerCase() !== "websocket") {
     return new Response("Expected WebSocket connection", { 

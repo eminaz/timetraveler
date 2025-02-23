@@ -106,11 +106,20 @@ export const useTimeBooth = () => {
       websocketRef.current.close();
     }
 
-    const ws = new WebSocket(
-      `wss://bxtwhvvgykntbmpwtitx.functions.supabase.co/functions/v1/chat-voice-realtime?year=${state.year}&location=${encodeURIComponent(state.location)}`
-    );
+    const url = new URL(`wss://bxtwhvvgykntbmpwtitx.functions.supabase.co/functions/v1/chat-voice-realtime`);
+    url.searchParams.append('year', state.year.toString());
+    url.searchParams.append('location', state.location);
 
-    console.log('Connecting to WebSocket...', ws.url);
+    const anonKey = supabase.supabaseKey;
+
+    const ws = new WebSocket(url, {
+      headers: {
+        'Authorization': `Bearer ${anonKey}`,
+        'apikey': anonKey
+      }
+    });
+
+    console.log('Connecting to WebSocket...', url.toString());
 
     ws.onopen = () => {
       console.log('WebSocket connection established');
