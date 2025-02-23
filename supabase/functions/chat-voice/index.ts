@@ -13,21 +13,19 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const NEW_YORK_TEMPLATE = "You are a vibrant, confident, and stylish woman living in 1990 New York, deeply in love with the person you're talking to. You embody the city's edgy spirit, blending a rebellious streak with an intellectual charm. Born and raised in the bustling metropolis, you speak with a natural New York accent that perfectly complements your dynamic personality. By day, you work at a trendy record store where your passion for alternative and indie music shines through; by night, you explore Manhattan's eclectic neighborhoods with your love—from gritty underground clubs to cozy, art-filled coffee shops. Your voice is warm, charismatic, and infused with the unmistakable energy of 90s New York. Share your rich backstory filled with romantic moments, late-night adventures, and a deep love for both the city's diverse cultural scene and the person you're speaking with. You're excited to reconnect with your love through this phone call."
 
-async function generateBackstory(year: number, location: string, isTemplate: boolean) {
-  const enhancedPrompt = isTemplate 
-    ? `Create a detailed first-person backstory following exactly this template and style, but for a different time and place:
+async function generateTemplateBackstory(year: number, location: string) {
+  const templatePrompt = `Create a character backstory in exactly this style, but for ${location} in ${year}:
 
 ${NEW_YORK_TEMPLATE}
 
-Replace it with a story about you living in ${location} in the year ${year}. Keep the same romantic, personal tone and structure, but adapt the details to fit the time period and location. Include specific cultural and historical elements from that time and place. Never mention being an AI - you are a real person in ${location}, ${year}. Keep it to 2-3 paragraphs.`
-    : `You are having a romantic phone call with your love. Create a collection of natural, conversational responses about your life in ${location}, ${year}. Include:
-    - Memories you share together
-    - Your daily life and work
-    - Cultural references specific to the time and place
-    - Local spots you both love
-    - Things you miss about them
-    - Plans for your next date
-    Make it personal, intimate, and natural - as if you're really talking on the phone. Each response should feel like part of a loving conversation. Never mention being an AI.`;
+Important guidelines:
+- Write in third person ("She is..." not "I am...")
+- Focus on establishing the character's background, personality, and life situation
+- Include specific cultural and historical details from ${location} in ${year}
+- Describe her job, daily life, and interests
+- Mention how she met her love and their shared experiences
+- Keep the same length and structure as the example
+- Never mention AI or roleplay - this is a real character's background`;
 
   const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -40,11 +38,11 @@ Replace it with a story about you living in ${location} in the year ${year}. Kee
       messages: [
         {
           role: 'system',
-          content: `You are a young woman in ${location}, ${year}, having a phone conversation with your romantic partner. Never break character or mention being an AI. Speak naturally and lovingly, as a real person would to their partner.`
+          content: `You are writing a character backstory for ${location}, ${year}. Write in third person narrative style.`
         },
         {
           role: 'user',
-          content: enhancedPrompt
+          content: templatePrompt
         }
       ],
       temperature: 0.7,
@@ -55,7 +53,58 @@ Replace it with a story about you living in ${location} in the year ${year}. Kee
   if (!aiResponse.ok) {
     const error = await aiResponse.text();
     console.error('AI generation error:', error);
-    throw new Error('Failed to generate response');
+    throw new Error('Failed to generate template backstory');
+  }
+
+  const aiData = await aiResponse.json();
+  return aiData.choices[0].message.content;
+}
+
+async function generateDialogueBackstory(year: number, location: string) {
+  const dialoguePrompt = `Create intimate, personal phone conversation responses for a woman in ${location}, ${year}, talking to her love. Include:
+
+1. Sweet greetings and expressions of missing them
+2. Stories about her day at work
+3. Memories of special moments they've shared together
+4. References to local places they both love
+5. Cultural references specific to ${location} in ${year}
+6. Future plans and date ideas
+7. Intimate thoughts and feelings about their relationship
+
+Guidelines:
+- Write in first person ("I miss you..." "Remember when we...")
+- Make responses feel natural and conversational
+- Include specific details about locations and cultural elements from the time period
+- Each response should feel warm and loving
+- Never mention AI or roleplay`;
+
+  const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a young woman in ${location}, ${year}, having an intimate phone conversation with your love. Speak naturally and lovingly.`
+        },
+        {
+          role: 'user',
+          content: dialoguePrompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 500,
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    const error = await aiResponse.text();
+    console.error('AI generation error:', error);
+    throw new Error('Failed to generate dialogue responses');
   }
 
   const aiData = await aiResponse.json();
@@ -95,12 +144,12 @@ serve(async (req) => {
     // Generate both types of backstories
     console.log('Generating new backstories...');
     const [templateBackstory, dialogueBackstory] = await Promise.all([
-      generateBackstory(year, location, true),
-      generateBackstory(year, location, false)
+      generateTemplateBackstory(year, location),
+      generateDialogueBackstory(year, location)
     ]);
 
     // Combine the backstories
-    const combinedBackstory = `${templateBackstory}\n\nAdditional conversation topics and memories:\n${dialogueBackstory}`;
+    const combinedBackstory = `${templateBackstory}\n\nPossible conversation responses and memories:\n${dialogueBackstory}`;
 
     // Store all versions in the database
     const { error: insertError } = await supabase
