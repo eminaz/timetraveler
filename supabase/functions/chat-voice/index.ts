@@ -22,6 +22,8 @@ serve(async (req) => {
     const { prompt, useDeepseek, year, location } = await req.json()
     console.log('Received request:', { prompt, useDeepseek, year, location });
 
+    let backstory: string;
+
     // First, check if we already have a backstory for this year and location
     const { data: existingBackstory, error: queryError } = await supabase
       .from('backstories')
@@ -37,68 +39,65 @@ serve(async (req) => {
 
     if (existingBackstory) {
       console.log('Using existing backstory from database');
-      return new Response(
-        JSON.stringify({ text: existingBackstory.backstory }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('No existing backstory found, generating new one');
-    const enhancedPrompt = `Create a detailed first-person backstory in the style of this example:
+      backstory = existingBackstory.backstory;
+    } else {
+      console.log('No existing backstory found, generating new one');
+      const enhancedPrompt = `Create a detailed first-person backstory in the style of this example:
 
 ${NEW_YORK_TEMPLATE}
 
 But instead, make it about you living in ${location} in the year ${year}. You are deeply in love with the person you're talking to on the phone. Use "you" and "your" throughout, making it personal and intimate. Include your personality traits, daily life, interests, and how your romantic relationship shapes your experience of the time period and location. Make it romantic and engaging, speaking directly as a real person in a loving relationship. Never mention being an AI or digital entity - you are a real person in ${location}, ${year}. Keep it to 2-3 paragraphs.`;
 
-    console.log('Making request to Deepseek API with enhanced prompt...');
-    const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a young woman in ${location}, ${year}, having a phone conversation with your romantic partner. Never break character or mention being an AI. Speak naturally and lovingly, as a real person would to their partner.`
-          },
-          {
-            role: 'user',
-            content: enhancedPrompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-      }),
-    });
+      console.log('Making request to Deepseek API with enhanced prompt...');
+      const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a young woman in ${location}, ${year}, having a phone conversation with your romantic partner. Never break character or mention being an AI. Speak naturally and lovingly, as a real person would to their partner.`
+            },
+            {
+              role: 'user',
+              content: enhancedPrompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+        }),
+      });
 
-    if (!aiResponse.ok) {
-      const error = await aiResponse.text();
-      console.error('AI generation error:', error);
-      throw new Error('Failed to generate response');
-    }
+      if (!aiResponse.ok) {
+        const error = await aiResponse.text();
+        console.error('AI generation error:', error);
+        throw new Error('Failed to generate response');
+      }
 
-    const aiData = await aiResponse.json();
-    const generatedText = aiData.choices[0].message.content;
+      const aiData = await aiResponse.json();
+      backstory = aiData.choices[0].message.content;
 
-    // Store the generated backstory in the database
-    const { error: insertError } = await supabase
-      .from('backstories')
-      .insert([
-        { year, location, backstory: generatedText }
-      ]);
+      // Store the generated backstory in the database
+      const { error: insertError } = await supabase
+        .from('backstories')
+        .insert([
+          { year, location, backstory }
+        ]);
 
-    if (insertError) {
-      console.error('Failed to store backstory:', insertError);
-      // Don't throw here, we still want to return the generated text
-    } else {
-      console.log('Successfully stored new backstory in database');
+      if (insertError) {
+        console.error('Failed to store backstory:', insertError);
+        // Don't throw here, we still want to return the generated text
+      } else {
+        console.log('Successfully stored new backstory in database');
+      }
     }
 
     return new Response(
-      JSON.stringify({ text: generatedText }),
+      JSON.stringify({ text: backstory }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
