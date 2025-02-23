@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, Mic } from 'lucide-react';
+import { Phone, Mic, PhoneOff } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
@@ -17,6 +17,7 @@ const TimeBooth: React.FC = () => {
     isSpeaking,
     message,
     persona,
+    isConnecting,
     setYear,
     setLocation,
     pickupPhone,
@@ -47,20 +48,32 @@ const TimeBooth: React.FC = () => {
                   variant="outline"
                   onClick={() => setPersona(persona === 'japanese' ? 'newyork' : 'japanese')}
                   className="text-white"
-                  disabled={isListening || isSpeaking}
+                  disabled={isListening || isSpeaking || isConnecting}
                 >
                   {persona === 'japanese' ? '🇯🇵 Japanese' : '🗽 New York'}
                 </Button>
-                <div
-                  className={cn(
-                    "phone flex items-center justify-center",
-                    isRinging && "animate-ring",
-                    isPickedUp && "scale-90"
-                  )}
-                  onClick={isPickedUp ? hangupPhone : pickupPhone}
-                >
-                  <Phone className="w-8 h-8 text-booth-dark" />
-                </div>
+                {isPickedUp ? (
+                  <Button
+                    variant="destructive"
+                    onClick={hangupPhone}
+                    disabled={isConnecting}
+                    className="flex items-center gap-2"
+                  >
+                    <PhoneOff className="w-4 h-4" />
+                    Hang Up
+                  </Button>
+                ) : (
+                  <div
+                    className={cn(
+                      "phone flex items-center justify-center cursor-pointer",
+                      isRinging && "animate-ring",
+                      (isConnecting || isPickedUp) && "opacity-50 cursor-not-allowed"
+                    )}
+                    onClick={pickupPhone}
+                  >
+                    <Phone className="w-8 h-8 text-booth-dark" />
+                  </div>
+                )}
               </div>
             </div>
 

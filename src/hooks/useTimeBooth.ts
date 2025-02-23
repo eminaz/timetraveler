@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +14,7 @@ interface TimeBoothState {
   message: string;
   persona: 'japanese' | 'newyork';
   generatedPrompt: string | null;
+  isConnecting: boolean;
 }
 
 class AudioQueue {
@@ -68,7 +68,8 @@ export const useTimeBooth = () => {
     isSpeaking: false,
     message: '',
     persona: 'japanese',
-    generatedPrompt: null
+    generatedPrompt: null,
+    isConnecting: false
   });
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -124,6 +125,8 @@ export const useTimeBooth = () => {
 
   const connectWebRTC = async () => {
     try {
+      setState(prev => ({ ...prev, isConnecting: true }));
+      
       console.log('Starting conversation...');
       const backstory = await generateBackstory();
       if (!backstory) {
@@ -138,15 +141,23 @@ export const useTimeBooth = () => {
         agentId: 'T3V3l6ob4NjAgncL6RTX',
         onConnect: () => {
           console.log('ElevenLabs Connected');
-          setState(prev => ({ ...prev, isListening: true }));
+          setState(prev => ({ ...prev, isListening: true, isConnecting: false }));
         },
         onDisconnect: () => {
           console.log('ElevenLabs Disconnected');
-          setState(prev => ({ ...prev, isListening: false }));
+          setState(prev => ({ 
+            ...prev, 
+            isListening: false, 
+            isPickedUp: false,
+            isRinging: true,
+            message: '',
+            isConnecting: false
+          }));
         },
         onError: (error) => {
           console.error('ElevenLabs Error:', error);
-          toast.error('ElevenLabs connection error');
+          toast.error('Connection error');
+          setState(prev => ({ ...prev, isConnecting: false }));
         },
         onModeChange: (mode) => {
           console.log('Mode changed:', mode);
@@ -175,10 +186,18 @@ export const useTimeBooth = () => {
     } catch (error) {
       console.error('Failed to start conversation:', error);
       toast.error('Failed to start conversation');
+      setState(prev => ({ 
+        ...prev, 
+        isConnecting: false,
+        isPickedUp: false,
+        isRinging: true 
+      }));
     }
   };
 
   const pickupPhone = async () => {
+    if (state.isConnecting || state.isPickedUp) return;
+    
     setState(prev => ({
       ...prev,
       isRinging: false,
@@ -189,18 +208,9 @@ export const useTimeBooth = () => {
   };
 
   const hangupPhone = () => {
-    if (state.useElevenLabs && conversationRef.current) {
+    if (conversationRef.current) {
       conversationRef.current.endSession();
       conversationRef.current = null;
-    } else {
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-      if (dataChannelRef.current) {
-        dataChannelRef.current.close();
-        dataChannelRef.current = null;
-      }
     }
 
     setState(prev => ({
@@ -209,6 +219,9 @@ export const useTimeBooth = () => {
       isPickedUp: false,
       generatedImage: null,
       message: '',
+      isListening: false,
+      isSpeaking: false,
+      isConnecting: false
     }));
   };
 
