@@ -21,7 +21,7 @@ serve(async (req) => {
 
     const { year, location } = await req.json();
 
-    // Request an ephemeral token from OpenAI
+    // Request an ephemeral token from OpenAI with specific configuration
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
       method: "POST",
       headers: {
@@ -30,11 +30,20 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        voice: "alloy",
-        instructions: `You are a sweet and caring Japanese girlfriend from ${year}, living in ${location}. You occasionally mix Japanese words into your English responses. Be concise, warm, and authentic to the time period.`,
         modalities: ["text"],
+        instructions: `You are a sweet and caring Japanese girlfriend from ${year}, living in ${location}. You occasionally mix Japanese words into your English responses. Be concise, warm, and authentic to the time period.`,
+        voice: "alloy",
+        input_audio_format: "pcm16",
+        output_audio_format: "pcm16",
+        turn_detection: {
+          type: "server_vad",
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 1000,
+        },
         tool_choice: "auto",
-        temperature: 0.8
+        temperature: 0.8,
+        max_response_output_tokens: "inf"
       }),
     });
 

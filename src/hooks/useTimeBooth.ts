@@ -125,11 +125,29 @@ export const useTimeBooth = () => {
         const event = JSON.parse(e.data);
         console.log('Received event:', event);
 
-        if (event.type === 'response.text.delta') {
+        if (event.type === 'session.created') {
+          // Send session configuration after session is created
+          const sessionConfig = {
+            type: 'session.update',
+            session: {
+              modalities: ["text"],
+              instructions: `You are a sweet and caring Japanese girlfriend from ${state.year}, living in ${state.location}. You occasionally mix Japanese words into your English responses. Be concise, warm, and authentic to the time period.`,
+              tool_choice: "auto",
+              temperature: 0.8,
+              max_response_output_tokens: "inf"
+            }
+          };
+          dc.send(JSON.stringify(sessionConfig));
+        } else if (event.type === 'response.text.delta') {
           setState(prev => ({
             ...prev,
             message: prev.message + event.delta
           }));
+        } else if (event.type === 'response.done') {
+          if (event.response.status === 'failed') {
+            console.error('Response failed:', event.response.status_details);
+            toast.error('Failed to get response');
+          }
         }
       });
 
