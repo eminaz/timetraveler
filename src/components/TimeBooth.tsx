@@ -18,12 +18,14 @@ const TimeBooth: React.FC = () => {
     isSpeaking,
     message,
     useRealtime,
+    useElevenLabs,
     setYear,
     setLocation,
     pickupPhone,
     hangupPhone,
     speak,
     setUseRealtime,
+    setUseElevenLabs,
   } = useTimeBooth();
 
   const handleSubmitMessage = async (e: React.FormEvent) => {
@@ -45,11 +47,19 @@ const TimeBooth: React.FC = () => {
               <h1 className="text-2xl font-bold text-white">Time Booth</h1>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-white text-sm">Use Realtime</span>
+                  <span className="text-white text-sm">OpenAI</span>
                   <Switch
                     checked={useRealtime}
                     onCheckedChange={setUseRealtime}
-                    disabled={isPickedUp}
+                    disabled={isPickedUp || useElevenLabs}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white text-sm">ElevenLabs</span>
+                  <Switch
+                    checked={useElevenLabs}
+                    onCheckedChange={setUseElevenLabs}
+                    disabled={isPickedUp || useRealtime}
                   />
                 </div>
                 <div

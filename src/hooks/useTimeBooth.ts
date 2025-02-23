@@ -1,7 +1,7 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
+import { useConversation } from '@11labs/react';
 
 interface TimeBoothState {
   year: number;
@@ -13,6 +13,7 @@ interface TimeBoothState {
   isSpeaking: boolean;
   message: string;
   useRealtime: boolean;
+  useElevenLabs: boolean;
 }
 
 class AudioQueue {
@@ -66,12 +67,31 @@ export const useTimeBooth = () => {
     isSpeaking: false,
     message: '',
     useRealtime: false,
+    useElevenLabs: false,
   });
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioQueue | null>(null);
+
+  const conversation = useConversation({
+    onConnect: () => console.log('ElevenLabs Connected'),
+    onDisconnect: () => console.log('ElevenLabs Disconnected'),
+    onMessage: (message) => {
+      console.log('ElevenLabs Message:', message);
+      if (message.type === 'response.text.delta') {
+        setState(prev => ({
+          ...prev,
+          message: prev.message + message.delta
+        }));
+      }
+    },
+    onError: (error) => {
+      console.error('ElevenLabs Error:', error);
+      toast.error('ElevenLabs connection error');
+    },
+  });
 
   const playAudio = async (audioData: Uint8Array) => {
     if (!audioContextRef.current) {
@@ -92,6 +112,20 @@ export const useTimeBooth = () => {
   };
 
   const connectWebRTC = async () => {
+    if (state.useElevenLabs) {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        await conversation.startSession({
+          agentId: 'T3V3l6ob4NjAgncL6RTX',
+        });
+      } catch (error) {
+        console.error('Failed to start ElevenLabs conversation:', error);
+        toast.error('Failed to connect to ElevenLabs');
+      }
+      return;
+    }
+
     try {
       // Get ephemeral token from our Edge Function
       const { data: tokenResponse, error: tokenError } = await supabase.functions.invoke('chat-voice-realtime', {
@@ -197,19 +231,23 @@ export const useTimeBooth = () => {
       isPickedUp: true,
     }));
 
-    if (state.useRealtime) {
+    if (state.useRealtime || state.useElevenLabs) {
       await connectWebRTC();
     }
   };
 
   const hangupPhone = () => {
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-    if (dataChannelRef.current) {
-      dataChannelRef.current.close();
-      dataChannelRef.current = null;
+    if (state.useElevenLabs) {
+      conversation.endSession();
+    } else {
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      if (dataChannelRef.current) {
+        dataChannelRef.current.close();
+        dataChannelRef.current = null;
+      }
     }
 
     setState(prev => ({
@@ -222,18 +260,26 @@ export const useTimeBooth = () => {
   };
 
   const speak = async (text: string) => {
+    if (state.useElevenLabs && conversation.status === 'connected') {
+      const event = {
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text }]
+        }
+      };
+      conversation.send(JSON.stringify(event));
+      return;
+    }
+
     if (state.useRealtime && dataChannelRef.current?.readyState === 'open') {
       const event = {
         type: 'conversation.item.create',
         item: {
           type: 'message',
           role: 'user',
-          content: [
-            {
-              type: 'input_text',
-              text
-            }
-          ]
+          content: [{ type: 'input_text', text }]
         }
       };
 
@@ -280,7 +326,11 @@ export const useTimeBooth = () => {
   };
 
   const setUseRealtime = (useRealtime: boolean) => {
-    setState(prev => ({ ...prev, useRealtime }));
+    setState(prev => ({ ...prev, useRealtime, useElevenLabs: useRealtime ? false : prev.useElevenLabs }));
+  };
+
+  const setUseElevenLabs = (useElevenLabs: boolean) => {
+    setState(prev => ({ ...prev, useElevenLabs, useRealtime: useElevenLabs ? false : prev.useRealtime }));
   };
 
   useEffect(() => {
@@ -294,8 +344,11 @@ export const useTimeBooth = () => {
       if (dataChannelRef.current) {
         dataChannelRef.current.close();
       }
+      if (conversation.status === 'connected') {
+        conversation.endSession();
+      }
     };
-  }, []);
+  }, [conversation]);
 
   return {
     ...state,
@@ -305,5 +358,6 @@ export const useTimeBooth = () => {
     hangupPhone,
     speak,
     setUseRealtime,
+    setUseElevenLabs,
   };
 };
