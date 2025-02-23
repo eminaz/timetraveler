@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -111,16 +110,7 @@ export const useTimeBooth = () => {
       const pc = new RTCPeerConnection();
       peerConnectionRef.current = pc;
 
-      // Set up audio
-      const audioEl = document.createElement('audio');
-      audioEl.autoplay = true;
-      pc.ontrack = e => audioEl.srcObject = e.streams[0];
-
-      // Add local audio track
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      pc.addTrack(stream.getTracks()[0]);
-
-      // Set up data channel
+      // Set up data channel for text communication
       const dc = pc.createDataChannel('oai-events');
       dataChannelRef.current = dc;
 
@@ -142,7 +132,7 @@ export const useTimeBooth = () => {
 
       // Connect to OpenAI's Realtime API
       const baseUrl = "https://api.openai.com/v1/realtime";
-      const model = "gpt-4o-realtime-preview-2024-10-01";
+      const model = "gpt-4o-mini";
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: "POST",
         body: offer.sdp,

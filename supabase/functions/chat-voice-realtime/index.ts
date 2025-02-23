@@ -19,10 +19,7 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY is not set');
     }
 
-    // Get parameters from URL
-    const url = new URL(req.url);
-    const year = url.searchParams.get("year") || "1970";
-    const location = url.searchParams.get("location") || "Tokyo, Japan";
+    const { year, location } = await req.json();
 
     // Request an ephemeral token from OpenAI
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
@@ -32,14 +29,12 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-realtime-preview-2024-10-01",
+        model: "gpt-4o-mini",
         voice: "alloy",
         instructions: `You are a sweet and caring Japanese girlfriend from ${year}, living in ${location}. You occasionally mix Japanese words into your English responses. Be concise, warm, and authentic to the time period.`,
-        turn_detection: {
-          type: "server_vad",
-          prefix_padding_ms: 300,
-          silence_duration_ms: 1000
-        }
+        modalities: ["text"],
+        tool_choice: "auto",
+        temperature: 0.8
       }),
     });
 
