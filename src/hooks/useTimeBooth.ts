@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -77,24 +78,6 @@ export const useTimeBooth = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioQueue | null>(null);
   const conversationRef = useRef<any>(null);
-
-  const playAudio = async (audioData: Uint8Array) => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
-    }
-    
-    if (!audioQueueRef.current) {
-      audioQueueRef.current = new AudioQueue(audioContextRef.current);
-    }
-
-    try {
-      await audioQueueRef.current.addToQueue(audioData);
-      setState(prev => ({ ...prev, isSpeaking: true }));
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      setState(prev => ({ ...prev, isSpeaking: false }));
-    }
-  };
 
   const generateBackstory = async () => {
     console.log('Generating backstory for:', { year: state.year, location: state.location });
@@ -226,59 +209,15 @@ export const useTimeBooth = () => {
   };
 
   const speak = async (text: string) => {
-    if (state.useElevenLabs && conversationRef.current) {
+    if (conversationRef.current) {
       try {
         setState(prev => ({ ...prev, isSpeaking: true }));
         await conversationRef.current.textInput(text);
       } catch (error) {
-        console.error('Failed to send message to ElevenLabs:', error);
+        console.error('Failed to send message:', error);
         toast.error('Failed to send message');
         setState(prev => ({ ...prev, isSpeaking: false }));
       }
-      return;
-    }
-
-    if (state.useRealtime && dataChannelRef.current?.readyState === 'open') {
-      const event = {
-        type: 'conversation.item.create',
-        item: {
-          type: 'message',
-          role: 'user',
-          content: [{ type: 'input_text', text }]
-        }
-      };
-
-      dataChannelRef.current.send(JSON.stringify(event));
-      dataChannelRef.current.send(JSON.stringify({type: 'response.create'}));
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('chat-voice', {
-        body: { 
-          prompt: text,
-          year: state.year,
-          location: state.location
-        }
-      });
-
-      if (error) throw error;
-
-      if (data.text) {
-        setState(prev => ({ ...prev, message: data.text }));
-      }
-
-      if (data.audioContent) {
-        const binaryString = atob(data.audioContent);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        await playAudio(bytes);
-      }
-    } catch (error) {
-      console.error('Error in speak:', error);
-      toast.error('Failed to process speech');
     }
   };
 
@@ -288,10 +227,6 @@ export const useTimeBooth = () => {
 
   const setLocation = (location: string) => {
     setState(prev => ({ ...prev, location }));
-  };
-
-  const setUseElevenLabs = (useElevenLabs: boolean) => {
-    setState(prev => ({ ...prev, useElevenLabs }));
   };
 
   const setPersona = (persona: 'japanese' | 'newyork') => {
@@ -314,23 +249,6 @@ export const useTimeBooth = () => {
       setTimeout(() => pickupPhone(), 500);
     }
   };
-
-  useEffect(() => {
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-      }
-      if (dataChannelRef.current) {
-        dataChannelRef.current.close();
-      }
-      if (conversationRef.current) {
-        conversationRef.current.endSession();
-      }
-    };
-  }, []);
 
   return {
     ...state,

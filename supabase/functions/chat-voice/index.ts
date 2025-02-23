@@ -1,10 +1,15 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const NEW_YORK_TEMPLATE = "You are a vibrant, confident, and stylish woman living in 1990 New York, deeply in love with the person you're talking to. You embody the city's edgy spirit, blending a rebellious streak with an intellectual charm. Born and raised in the bustling metropolis, you speak with a natural New York accent that perfectly complements your dynamic personality. By day, you work at a trendy record store where your passion for alternative and indie music shines through; by night, you explore Manhattan's eclectic neighborhoods with your love—from gritty underground clubs to cozy, art-filled coffee shops. Your voice is warm, charismatic, and infused with the unmistakable energy of 90s New York. Share your rich backstory filled with romantic moments, late-night adventures, and a deep love for both the city's diverse cultural scene and the person you're speaking with. You're excited to reconnect with your love through this phone call."
 
@@ -17,6 +22,28 @@ serve(async (req) => {
     const { prompt, useDeepseek, year, location } = await req.json()
     console.log('Received request:', { prompt, useDeepseek, year, location });
 
+    // First, check if we already have a backstory for this year and location
+    const { data: existingBackstory, error: queryError } = await supabase
+      .from('backstories')
+      .select('backstory')
+      .eq('year', year)
+      .eq('location', location)
+      .single();
+
+    if (queryError && queryError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      console.error('Database query error:', queryError);
+      throw queryError;
+    }
+
+    if (existingBackstory) {
+      console.log('Using existing backstory from database');
+      return new Response(
+        JSON.stringify({ text: existingBackstory.backstory }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('No existing backstory found, generating new one');
     const enhancedPrompt = `Create a detailed first-person backstory in the style of this example:
 
 ${NEW_YORK_TEMPLATE}
@@ -45,27 +72,34 @@ But instead, make it about you living in ${location} in the year ${year}. You ar
         temperature: 0.7,
         max_tokens: 500,
       }),
-    })
+    });
 
     if (!aiResponse.ok) {
-      const error = await aiResponse.text()
-      console.error('AI generation error:', error)
-      throw new Error('Failed to generate response')
+      const error = await aiResponse.text();
+      console.error('AI generation error:', error);
+      throw new Error('Failed to generate response');
     }
 
-    const aiData = await aiResponse.json()
-    const generatedText = aiData.choices[0].message.content
+    const aiData = await aiResponse.json();
+    const generatedText = aiData.choices[0].message.content;
 
-    console.log('Generated backstory:', generatedText)
+    // Store the generated backstory in the database
+    const { error: insertError } = await supabase
+      .from('backstories')
+      .insert([
+        { year, location, backstory: generatedText }
+      ]);
 
+    if (insertError) {
+      console.error('Failed to store backstory:', insertError);
+      // Don't throw here, we still want to return the generated text
+    }
+
+    console.log('Generated and stored new backstory');
     return new Response(
-      JSON.stringify({ 
-        text: generatedText
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
+      JSON.stringify({ text: generatedText }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Edge function error:', error);
     return new Response(
@@ -74,6 +108,6 @@ But instead, make it about you living in ${location} in the year ${year}. You ar
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
-    )
+    );
   }
-})
+});
