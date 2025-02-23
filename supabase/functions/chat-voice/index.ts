@@ -16,14 +16,15 @@ serve(async (req) => {
     console.log('Received request:', { prompt, year, location });
 
     // Generate response using Deepseek
-    const aiResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+    console.log('Making request to Deepseek API...');
+    const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('PERPLEXITY_API_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-online',
+        model: 'deepseek-chat',
         messages: [
           {
             role: 'system',
