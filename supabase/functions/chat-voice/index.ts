@@ -19,24 +19,45 @@ serve(async (req) => {
     if (body.action === 'get_signed_url') {
       console.log('Generating signed URL for conversation');
       const response = await fetch(
-        "https://api.elevenlabs.io/v1/conversation/get_signed_url?agent_id=8N0GDbdmFxk25bHMHXdr",
+        "https://api.elevenlabs.io/v2/conversation/start",
         {
-          method: "GET",
+          method: "POST",
           headers: {
             'xi-api-key': Deno.env.get('ELEVEN_LABS_API_KEY') ?? '',
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            character: {
+              name: "Japanese Girlfriend",
+              description: "A sweet and caring Japanese girlfriend from the 1970s who sometimes mixes Japanese words into her English",
+              voice_id: "FGY2WhTYpPnrIDTdsKH5", // Laura's voice
+            },
+            start_audio_config: {
+              model_id: "eleven_multilingual_v2",
+              enable_real_time_playback: true,
+            },
+            session_config: {
+              allow_text_input: true,
+              allow_audio_input: true,
+              enable_memory: true,
+            }
+          })
         }
       );
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('ElevenLabs API error:', errorText);
-        throw new Error('Failed to generate signed URL');
+        throw new Error(`Failed to start conversation: ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Successfully started conversation:', data);
+
       return new Response(
-        JSON.stringify({ signed_url: data.signed_url }),
+        JSON.stringify({ 
+          signed_url: data.connection_url || data.websocket_url 
+        }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
