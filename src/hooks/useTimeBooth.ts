@@ -118,10 +118,10 @@ export const useTimeBooth = () => {
           },
           onMessage: (message) => {
             console.log('ElevenLabs Message:', message);
-            if (message.type === 'response.text.delta') {
+            if (message.source === 'agent') {
               setState(prev => ({
                 ...prev,
-                message: prev.message + message.delta
+                message: prev.message + message.message
               }));
             }
           },
