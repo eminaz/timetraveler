@@ -43,7 +43,7 @@ export const useTimeBooth = () => {
       isRinging: false,
       isPickedUp: true,
     }));
-    speak("こんにちは! I'm so happy to hear from you! How are you today?");
+    speak("こんにちは! I'm so happy to hear from you! How are you today? Life in 1970s Tokyo is so exciting!");
   };
 
   const hangupPhone = () => {
