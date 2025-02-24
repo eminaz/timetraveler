@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft } from 'lucide-react';
 import { Input } from './ui/input';
@@ -44,9 +43,9 @@ const TimeBooth: React.FC = () => {
   const [hasStartedTimeTravel, setHasStartedTimeTravel] = useState(false);
   const [showPhoneButton, setShowPhoneButton] = useState(false);
   const [hasSetInitialBackground] = useState(() => {
-    // 80% chance to use the panda image
     return Math.random() < 0.8;
   });
+  const [initialBackgroundUrl, setInitialBackgroundUrl] = useState('https://v3.fal.media/files/panda/ls0tuenrcMCzHuq4fVVu9.png');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [loadingVideoUrl, setLoadingVideoUrl] = useState<string>('https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4');
 
@@ -54,7 +53,6 @@ const TimeBooth: React.FC = () => {
     const video = document.createElement('video');
     video.preload = 'auto';
     
-    // Test if primary video URL is available
     video.src = 'https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4';
     
     const handleError = () => {
@@ -67,6 +65,15 @@ const TimeBooth: React.FC = () => {
     return () => {
       video.removeEventListener('error', handleError);
     };
+  }, []);
+
+  React.useEffect(() => {
+    const img = new Image();
+    img.onerror = () => {
+      console.log('Primary background not available, using fallback');
+      setInitialBackgroundUrl('https://bxtwhvvgykntbmpwtitx.supabase.co/storage/v1/object/public/videos//tokyo-1970.png');
+    };
+    img.src = 'https://v3.fal.media/files/panda/ls0tuenrcMCzHuq4fVVu9.png';
   }, []);
 
   React.useEffect(() => {
@@ -198,14 +205,14 @@ const TimeBooth: React.FC = () => {
     <div 
       className={cn(
         "min-h-screen bg-cover bg-center transition-all duration-1000",
-        hasStartedTimeTravel ? "" : "bg-[url('https://v3.fal.media/files/panda/ls0tuenrcMCzHuq4fVVu9.png')]"
+        hasStartedTimeTravel ? "" : `bg-[url('${initialBackgroundUrl}')]`
       )}
       style={backgroundImage ? {
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       } : hasSetInitialBackground ? {
-        backgroundImage: "url('https://v3.fal.media/files/panda/ls0tuenrcMCzHuq4fVVu9.png')",
+        backgroundImage: `url('${initialBackgroundUrl}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       } : undefined}
