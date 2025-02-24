@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
@@ -32,7 +33,6 @@ const TimeBooth: React.FC = () => {
     callGirlfriend,
     hangupPhone,
     speak,
-    setPersona,
     generateBackstory,
     generateRingbackTone,
   } = useTimeBooth();
