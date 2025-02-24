@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
@@ -258,8 +257,18 @@ const TimeBooth: React.FC = () => {
       )}
 
       {isGeneratingScene && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="text-center text-white space-y-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ backgroundColor: 'black' }}
+          >
+            <source src="https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4" type="video/mp4" />
+          </video>
+          <div className="relative text-center text-white space-y-4 bg-black/50 p-6 rounded-lg">
             <Loader2 className="w-12 h-12 animate-spin mx-auto" />
             <p className="text-xl">Generating your time travel destination...</p>
           </div>
