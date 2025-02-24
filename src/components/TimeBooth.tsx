@@ -97,7 +97,6 @@ const TimeBooth: React.FC = () => {
 
       generateRingbackTone().catch(error => {
         console.error('Failed to generate ringback tone:', error);
-        // Just log the error, don't stop the process
       });
       
       let imageUrl;
@@ -119,13 +118,6 @@ const TimeBooth: React.FC = () => {
         await saveScene(imageUrl);
       }
 
-      const backstory = await backstoryPromise;
-      
-      if (!backstory) {
-        throw new Error('Failed to generate backstory');
-      }
-
-      console.log('Setting background image:', imageUrl);
       setBackgroundImage(imageUrl);
       setIsGeneratingScene(false);
       setIsPreparingCall(true);
@@ -165,8 +157,8 @@ const TimeBooth: React.FC = () => {
   return (
     <div 
       className={cn(
-        "min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 transition-all duration-1000",
-        backgroundImage && "bg-none"
+        "min-h-screen bg-cover bg-center transition-all duration-1000",
+        hasStartedTimeTravel ? "" : "bg-[url('https://v3.fal.media/files/monkey/20k3w3XhPbUn0tk0NxFaB.png')]"
       )}
       style={backgroundImage ? {
         backgroundImage: `url(${backgroundImage})`,
@@ -185,103 +177,92 @@ const TimeBooth: React.FC = () => {
         </Button>
       )}
 
-      {!hasStartedTimeTravel ? (
-        <div className="min-h-screen flex items-center justify-center p-6">
-          <div className="phone-booth">
-            <div className="phone-booth-window">
-              <div className="flex flex-col h-full">
-                <div className="flex justify-between items-center mb-6">
-                  <h1 className="text-2xl font-bold text-white">Time Booth</h1>
-                  <div className="flex items-center gap-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => setPersona(persona === 'japanese' ? 'newyork' : 'japanese')}
-                      className="text-white"
-                    >
-                      {persona === 'japanese' ? '🇯🇵 Japanese' : '🗽 New York'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={startTimeTravel}
-                      disabled={isGeneratingScene || !location || !year}
-                      className={cn(
-                        "bg-gold hover:bg-gold/90 text-black",
-                        isGeneratingScene && "opacity-50"
-                      )}
-                    >
-                      <Rocket className="w-4 h-4 mr-2" />
-                      Start Time Travel
-                    </Button>
-                  </div>
-                </div>
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-md glass-panel p-8">
+          <div className="flex flex-col space-y-6">
+            <h1 className="text-3xl font-bold text-white text-center mb-6">Time Travel Portal</h1>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Year
+                </label>
+                <input
+                  type="range"
+                  min="1800"
+                  max="2024"
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="timeline-slider"
+                />
+                <span className="block text-center text-gold text-xl mt-2">
+                  {year}
+                </span>
+              </div>
 
-                <div className="space-y-6">
-                  <div className="glass-panel p-4">
-                    <label className="block text-sm font-medium text-white mb-2">
-                      Year
-                    </label>
-                    <input
-                      type="range"
-                      min="1800"
-                      max="2024"
-                      value={year}
-                      onChange={(e) => setYear(Number(e.target.value))}
-                      className="timeline-slider"
-                    />
-                    <span className="block text-center text-gold text-xl mt-2">
-                      {year}
-                    </span>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Location
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Enter a location..."
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="bg-white/10 text-white placeholder:text-gray-400"
+                />
+              </div>
 
-                  <div className="glass-panel p-4">
-                    <label className="block text-sm font-medium text-white mb-2">
-                      Location
-                    </label>
-                    <Input
-                      type="text"
-                      placeholder="Enter a location..."
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className="bg-white bg-opacity-10 text-white placeholder:text-gray-400"
-                    />
-                  </div>
-                </div>
+              <div className="flex justify-between items-center">
+                <Button
+                  variant="outline"
+                  onClick={() => setPersona(persona === 'japanese' ? 'newyork' : 'japanese')}
+                  className="text-white bg-white/10"
+                >
+                  {persona === 'japanese' ? '🇯🇵 Japanese' : '🗽 New York'}
+                </Button>
+                <Button
+                  onClick={startTimeTravel}
+                  disabled={isGeneratingScene || !location || !year}
+                  className="bg-[#9b87f5] hover:bg-[#7E69AB] text-white"
+                >
+                  <Rocket className="w-4 h-4 mr-2" />
+                  Start Time Travel
+                </Button>
               </div>
             </div>
           </div>
         </div>
-      ) : (
-        <div className="min-h-screen relative">
-          {isGeneratingScene && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40">
-              <div className="text-center text-white space-y-4">
-                <Loader2 className="w-12 h-12 animate-spin mx-auto" />
-                <p className="text-xl">Generating your time travel destination...</p>
-              </div>
-            </div>
-          )}
+      </div>
 
-          {showPhoneButton && (
-            <div className="absolute top-24 right-8 z-40">
-              <div
-                className={cn(
-                  "phone flex items-center justify-center cursor-pointer",
-                  isRinging && "animate-ring"
-                )}
-                onClick={callGirlfriend}
-              >
-                <Phone className="w-8 h-8 text-booth-dark" />
-              </div>
-            </div>
-          )}
+      {(showPhoneButton || isPickedUp) && (
+        <div className="fixed top-24 right-8 z-40">
+          <div
+            className={cn(
+              "phone flex items-center justify-center cursor-pointer",
+              isRinging && "animate-ring"
+            )}
+            onClick={isPickedUp ? hangupPhone : callGirlfriend}
+          >
+            <Phone className="w-8 h-8 text-booth-dark" />
+          </div>
+        </div>
+      )}
 
-          {message && (
-            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-40">
-              <div className="glass-panel p-4 max-w-md mx-auto">
-                <p className="text-white">{message}</p>
-              </div>
-            </div>
-          )}
+      {message && (
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40 w-full max-w-md">
+          <div className="glass-panel p-4 mx-4">
+            <p className="text-white">{message}</p>
+          </div>
+        </div>
+      )}
+
+      {isGeneratingScene && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="text-center text-white space-y-4">
+            <Loader2 className="w-12 h-12 animate-spin mx-auto" />
+            <p className="text-xl">Generating your time travel destination...</p>
+          </div>
         </div>
       )}
     </div>

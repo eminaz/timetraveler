@@ -93,7 +93,7 @@ export const useTimeBooth = () => {
 
       if (data.audio_url) {
         ringbackAudioRef.current = new Audio(data.audio_url);
-        ringbackAudioRef.current.volume = 0.3; // Set volume to 30%
+        ringbackAudioRef.current.volume = 0.1; // Reduce volume to 10%
         ringbackAudioRef.current.load(); // Preload the audio
       }
 
@@ -228,12 +228,10 @@ export const useTimeBooth = () => {
       isRinging: true,
     }));
 
-    // Play ringback tone if available
     if (state.ringbackToneUrl) {
-      // Use existing preloaded audio or create new one if not preloaded
       if (!ringbackAudioRef.current) {
         ringbackAudioRef.current = new Audio(state.ringbackToneUrl);
-        ringbackAudioRef.current.volume = 0.3; // Set volume to 30%
+        ringbackAudioRef.current.volume = 0.1; // Reduce volume to 10%
       }
       ringbackAudioRef.current.loop = true;
       try {
@@ -244,7 +242,6 @@ export const useTimeBooth = () => {
       }
     }
 
-    // Random delay between 1-5 seconds before pickup
     const delay = Math.floor(Math.random() * 4000) + 1000;
     console.log(`Will pick up in ${delay}ms`);
     
@@ -260,7 +257,6 @@ export const useTimeBooth = () => {
       conversationRef.current = null;
     }
 
-    // Stop ringback tone if playing
     if (ringbackAudioRef.current) {
       ringbackAudioRef.current.pause();
       ringbackAudioRef.current = null;
