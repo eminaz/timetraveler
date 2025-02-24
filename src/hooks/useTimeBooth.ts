@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -91,6 +90,12 @@ export const useTimeBooth = () => {
       });
 
       if (error) throw error;
+
+      if (data.audio_url) {
+        ringbackAudioRef.current = new Audio(data.audio_url);
+        ringbackAudioRef.current.volume = 0.3; // Set volume to 30%
+        ringbackAudioRef.current.load(); // Preload the audio
+      }
 
       setState(prev => ({ ...prev, ringbackToneUrl: data.audio_url }));
       return data.audio_url;
@@ -225,7 +230,11 @@ export const useTimeBooth = () => {
 
     // Play ringback tone if available
     if (state.ringbackToneUrl) {
-      ringbackAudioRef.current = new Audio(state.ringbackToneUrl);
+      // Use existing preloaded audio or create new one if not preloaded
+      if (!ringbackAudioRef.current) {
+        ringbackAudioRef.current = new Audio(state.ringbackToneUrl);
+        ringbackAudioRef.current.volume = 0.3; // Set volume to 30%
+      }
       ringbackAudioRef.current.loop = true;
       try {
         await ringbackAudioRef.current.play();
