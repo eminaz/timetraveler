@@ -46,7 +46,7 @@ const TimeBooth: React.FC = () => {
       setIsGeneratingScene(true);
       setIsPreparingCall(true);
 
-      // Generate the scene image
+      console.log('Starting scene generation for:', { year, location });
       const response = await fetch('/functions/v1/generate-scene', {
         method: 'POST',
         headers: {
@@ -55,14 +55,17 @@ const TimeBooth: React.FC = () => {
         body: JSON.stringify({ year, location }),
       });
 
+      console.log('Scene generation response status:', response.status);
       if (!response.ok) {
-        throw new Error('Failed to generate scene');
+        const errorText = await response.text();
+        console.error('Scene generation error:', errorText);
+        throw new Error(`Failed to generate scene: ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Scene generation successful, got image URL:', data.image_url);
       setBackgroundImage(data.image_url);
 
-      // Play ring sound after image is loaded
       const audio = new Audio('/phone-ring.mp3');
       audio.loop = true;
       audio.play();

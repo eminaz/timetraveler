@@ -7,8 +7,9 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -31,7 +32,9 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      throw new Error(`FAL.AI API error: ${await response.text()}`);
+      const errorText = await response.text();
+      console.error('FAL.AI API error:', errorText);
+      throw new Error(`FAL.AI API error: ${errorText}`);
     }
 
     const data = await response.json();

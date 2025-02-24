@@ -1,1 +1,3 @@
-project_id = "bxtwhvvgykntbmpwtitx"
+
+[functions.generate-scene]
+verify_jwt = false
