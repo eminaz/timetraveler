@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -175,65 +174,95 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, useDeepseek, year, location, persona = 'girlfriend' } = await req.json()
-    console.log('Received request:', { prompt, useDeepseek, year, location, persona });
+    const { prompt, useDeepseek, year, location } = await req.json()
+    console.log('Received request:', { prompt, useDeepseek, year, location });
 
-    // Check for existing backstories
-    const { data: existingBackstory, error: queryError } = await supabase
+    // Check for existing backstories for both personas
+    const { data: existingBackstories, error: queryError } = await supabase
       .from('backstories')
-      .select('template_backstory, dialogue_backstory, combined_backstory')
+      .select('persona, template_backstory, dialogue_backstory, combined_backstory')
       .eq('year', year)
       .eq('location', location)
-      .eq('persona', persona)
-      .single();
+      .in('persona', ['girlfriend', 'homie']);
 
-    if (queryError && queryError.code !== 'PGRST116') {
+    if (queryError) {
       console.error('Database query error:', queryError);
       throw queryError;
     }
 
-    if (existingBackstory?.combined_backstory) {
-      console.log('Using existing backstory from database');
+    const existing = {
+      girlfriend: existingBackstories?.find(b => b.persona === 'girlfriend'),
+      homie: existingBackstories?.find(b => b.persona === 'homie')
+    };
+
+    // If both backstories exist, return the one requested
+    if (existing.girlfriend?.combined_backstory && existing.homie?.combined_backstory) {
+      console.log('Using existing backstories from database');
+      // Return the backstory for the requested persona (default to girlfriend)
+      const requestedPersona = 'girlfriend';
       return new Response(
-        JSON.stringify({ text: existingBackstory.combined_backstory }),
+        JSON.stringify({ text: existing[requestedPersona].combined_backstory }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Generate both types of backstories
-    console.log('Generating new backstories...');
-    const [templateBackstory, dialogueBackstory] = await Promise.all([
-      generateTemplateBackstory(year, location, persona),
-      generateDialogueBackstory(year, location, persona)
-    ]);
+    // Generate backstories for both personas if either is missing
+    console.log('Generating new backstories for both personas...');
+    const personas: ('girlfriend' | 'homie')[] = ['girlfriend', 'homie'];
+    const backstories = await Promise.all(
+      personas.map(async (persona) => {
+        if (existing[persona]?.combined_backstory) {
+          console.log(`Using existing backstory for ${persona}`);
+          return {
+            persona,
+            ...existing[persona]
+          };
+        }
 
-    // Combine the backstories
-    const combinedBackstory = `${templateBackstory}\n\nPossible conversation responses and memories:\n${dialogueBackstory}`;
+        console.log(`Generating new backstory for ${persona}`);
+        const [templateBackstory, dialogueBackstory] = await Promise.all([
+          generateTemplateBackstory(year, location, persona),
+          generateDialogueBackstory(year, location, persona)
+        ]);
 
-    // Store all versions in the database
-    const { error: insertError } = await supabase
-      .from('backstories')
-      .insert([
-        { 
-          year, 
-          location, 
+        const combinedBackstory = `${templateBackstory}\n\nPossible conversation responses and memories:\n${dialogueBackstory}`;
+
+        // Store the new backstory
+        const { error: insertError } = await supabase
+          .from('backstories')
+          .insert([
+            { 
+              year, 
+              location, 
+              persona,
+              template_backstory: templateBackstory,
+              dialogue_backstory: dialogueBackstory,
+              combined_backstory: combinedBackstory
+            }
+          ]);
+
+        if (insertError) {
+          console.error(`Failed to store ${persona} backstory:`, insertError);
+        } else {
+          console.log(`Successfully stored ${persona} backstory in database`);
+        }
+
+        return {
           persona,
           template_backstory: templateBackstory,
           dialogue_backstory: dialogueBackstory,
           combined_backstory: combinedBackstory
-        }
-      ]);
+        };
+      })
+    );
 
-    if (insertError) {
-      console.error('Failed to store backstories:', insertError);
-    } else {
-      console.log('Successfully stored new backstories in database');
-    }
-
+    // Return the girlfriend backstory (default persona)
+    const girlfriendBackstory = backstories.find(b => b.persona === 'girlfriend');
     return new Response(
-      JSON.stringify({ text: combinedBackstory }),
+      JSON.stringify({ text: girlfriendBackstory?.combined_backstory }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (error) {
     console.error('Edge function error:', error);
     return new Response(
