@@ -39,6 +39,30 @@ export type Database = {
         }
         Relationships: []
       }
+      scenes: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_url: string
+          location: string
+          year: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_url: string
+          location: string
+          year: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_url?: string
+          location?: string
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

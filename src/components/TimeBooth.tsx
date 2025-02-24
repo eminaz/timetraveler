@@ -8,6 +8,15 @@ import { cn } from '../lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Define local types for the scenes table
+type Scene = {
+  id: string;
+  year: number;
+  location: string;
+  image_url: string;
+  created_at: string;
+};
+
 const TimeBooth: React.FC = () => {
   const {
     year,
@@ -41,10 +50,10 @@ const TimeBooth: React.FC = () => {
         .select('image_url')
         .eq('year', year)
         .eq('location', location.trim())
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      return data?.image_url;
+      return data?.image_url as string | null;
     } catch (error) {
       console.error('Error checking existing scene:', error);
       return null;
@@ -53,13 +62,15 @@ const TimeBooth: React.FC = () => {
 
   const saveScene = async (imageUrl: string) => {
     try {
+      const sceneData = {
+        year: year,
+        location: location.trim(),
+        image_url: imageUrl
+      };
+
       const { error } = await supabase
         .from('scenes')
-        .insert([{
-          year: year,
-          location: location.trim(),
-          image_url: imageUrl
-        }])
+        .insert([sceneData])
         .maybeSingle();
 
       if (error) throw error;
