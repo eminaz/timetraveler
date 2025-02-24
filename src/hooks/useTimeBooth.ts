@@ -1,3 +1,4 @@
+
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -111,13 +112,32 @@ export const useTimeBooth = () => {
     try {
       setState(prev => ({ ...prev, hasBackstory: false }));
       
+      // Check if backstory exists in database
+      const { data: existingBackstory } = await supabase
+        .from('backstories')
+        .select('combined_backstory')
+        .eq('year', state.year)
+        .eq('location', state.location.trim())  // Add trim() here
+        .eq('persona', state.persona)
+        .maybeSingle();
+
+      if (existingBackstory?.combined_backstory) {
+        console.log('Using existing backstory');
+        setState(prev => ({ 
+          ...prev, 
+          generatedPrompt: existingBackstory.combined_backstory,
+          hasBackstory: true
+        }));
+        return existingBackstory.combined_backstory;
+      }
+
       const { data, error } = await supabase.functions.invoke('chat-voice', {
         body: { 
           prompt: 'generate backstory',
           year: state.year,
-          location: state.location,
-          persona: state.persona,
-          useDeepseek: true
+          location: state.location.trim(),  // Add trim() here
+          useDeepseek: true,
+          persona: state.persona
         }
       });
 
@@ -127,6 +147,21 @@ export const useTimeBooth = () => {
       }
 
       console.log('Generated backstory:', data.text);
+      
+      // Save the new backstory
+      const { error: saveError } = await supabase
+        .from('backstories')
+        .insert([{
+          year: state.year,
+          location: state.location.trim(),  // Add trim() here
+          combined_backstory: data.text,
+          persona: state.persona
+        }]);
+
+      if (saveError) {
+        console.error('Error saving backstory:', saveError);
+      }
+
       setState(prev => ({ 
         ...prev, 
         generatedPrompt: data.text,
@@ -150,7 +185,16 @@ export const useTimeBooth = () => {
         ringbackAudioRef.current = null;
       }
 
-      const backstory = state.generatedPrompt;
+      const { data: existingBackstory } = await supabase
+        .from('backstories')
+        .select('combined_backstory')
+        .eq('year', state.year)
+        .eq('location', state.location.trim())  // Add trim() here
+        .eq('persona', state.persona)
+        .maybeSingle();
+
+      const backstory = existingBackstory?.combined_backstory || state.generatedPrompt;
+      
       if (!backstory) {
         throw new Error('No backstory available');
       }
@@ -159,8 +203,12 @@ export const useTimeBooth = () => {
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
       console.log('Initializing ElevenLabs session...');
+      const agentId = state.persona === 'girlfriend' ? 
+        'T3V3l6ob4NjAgncL6RTX' : // Girlfriend voice
+        'XWcySB7eGEOQPmqtfR3a';  // Homie voice
+
       conversationRef.current = await Conversation.startSession({
-        agentId: 'T3V3l6ob4NjAgncL6RTX',
+        agentId: agentId,
         onConnect: () => {
           console.log('ElevenLabs Connected');
           setState(prev => ({ ...prev, isListening: true, isConnecting: false }));
@@ -202,7 +250,7 @@ export const useTimeBooth = () => {
             },
             firstMessage: state.persona === 'girlfriend' ? 
               "Hey sweetheart! I was just thinking about you!" : 
-              "Hey babe! I was just thinking about you!",
+              "Yo! What's good? Just the person I wanted to hear from!",
             language: 'en',
           },
         },
@@ -298,29 +346,7 @@ export const useTimeBooth = () => {
   };
 
   const setPersona = (persona: 'girlfriend' | 'homie') => {
-    setState(prev => {
-      const newState = { ...prev, persona };
-      
-      if (persona === 'girlfriend') {
-        newState.year = 1970;
-        newState.location = 'Tokyo, Japan';
-      } else {
-        newState.year = 1990;
-        newState.location = 'New York, USA';
-      }
-      
-      return newState;
-    });
-
-    if (state.isPickedUp) {
-      hangupPhone();
-    }
-
-    setState(prev => ({
-      ...prev,
-      generatedPrompt: null,
-      hasBackstory: false
-    }));
+    setState(prev => ({ ...prev, persona }));
   };
 
   return {
