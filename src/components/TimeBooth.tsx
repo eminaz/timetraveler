@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft } from 'lucide-react';
 import { Input } from './ui/input';
@@ -51,7 +50,6 @@ const TimeBooth: React.FC = () => {
     video.src = 'https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4';
   }, []);
 
-  // Update this useEffect to handle the hangup case
   React.useEffect(() => {
     if (isPreparingCall && !isConnecting && !isPickedUp && hasBackstory) {
       setShowPhoneButton(true);
@@ -165,8 +163,8 @@ const TimeBooth: React.FC = () => {
     }
   };
 
-  const handleCall = (selectedPersona: 'girlfriend' | 'homie') => {
-    setPersona(selectedPersona);
+  const handleCall = async (selectedPersona: 'girlfriend' | 'homie') => {
+    await setPersona(selectedPersona);
     if (!isPickedUp) {
       callGirlfriend();
     }
@@ -174,7 +172,6 @@ const TimeBooth: React.FC = () => {
 
   const handleHangup = () => {
     hangupPhone();
-    // After hanging up, we want to show the call buttons again
     setShowPhoneButton(true);
   };
 

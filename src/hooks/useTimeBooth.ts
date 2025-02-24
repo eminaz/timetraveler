@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -346,7 +345,11 @@ export const useTimeBooth = () => {
   };
 
   const setPersona = (persona: 'girlfriend' | 'homie') => {
-    setState(prev => ({ ...prev, persona }));
+    return new Promise<void>((resolve) => {
+      setState(prev => ({ ...prev, persona }));
+      // Use requestAnimationFrame to ensure state is updated
+      requestAnimationFrame(() => resolve());
+    });
   };
 
   return {
