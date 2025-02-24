@@ -177,63 +177,58 @@ const TimeBooth: React.FC = () => {
         </Button>
       )}
 
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="w-full max-w-md glass-panel p-8">
-          <div className="flex flex-col space-y-6">
-            <h1 className="text-3xl font-bold text-white text-center mb-6">Time Travel Portal</h1>
-            
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Year
-                </label>
-                <input
-                  type="range"
-                  min="1800"
-                  max="2024"
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                  className="timeline-slider"
-                />
-                <span className="block text-center text-gold text-xl mt-2">
-                  {year}
-                </span>
-              </div>
+      {!hasStartedTimeTravel && (
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="w-full max-w-md glass-panel p-8">
+            <div className="flex flex-col space-y-6">
+              <h1 className="text-3xl font-bold text-white text-center mb-6">Time Travel Portal</h1>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Year
+                  </label>
+                  <input
+                    type="range"
+                    min="1990"
+                    max="3000"
+                    value={year}
+                    onChange={(e) => setYear(Number(e.target.value))}
+                    className="timeline-slider"
+                  />
+                  <span className="block text-center text-gold text-xl mt-2">
+                    {year}
+                  </span>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Location
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Enter a location..."
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="bg-white/10 text-white placeholder:text-gray-400"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Location
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Enter a location..."
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="bg-white/10 text-white placeholder:text-gray-400"
+                  />
+                </div>
 
-              <div className="flex justify-between items-center">
-                <Button
-                  variant="outline"
-                  onClick={() => setPersona(persona === 'japanese' ? 'newyork' : 'japanese')}
-                  className="text-white bg-white/10"
-                >
-                  {persona === 'japanese' ? '🇯🇵 Japanese' : '🗽 New York'}
-                </Button>
-                <Button
-                  onClick={startTimeTravel}
-                  disabled={isGeneratingScene || !location || !year}
-                  className="bg-[#9b87f5] hover:bg-[#7E69AB] text-white"
-                >
-                  <Rocket className="w-4 h-4 mr-2" />
-                  Start Time Travel
-                </Button>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={startTimeTravel}
+                    disabled={isGeneratingScene || !location || !year}
+                    className="bg-[#9b87f5] hover:bg-[#7E69AB] text-white w-full"
+                  >
+                    <Rocket className="w-4 h-4 mr-2" />
+                    Start Time Travel
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {(showPhoneButton || isPickedUp) && (
         <div className="fixed top-24 right-8 z-40">
