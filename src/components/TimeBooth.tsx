@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft, User, UserRound } from 'lucide-react';
 import { Input } from './ui/input';
@@ -178,14 +179,35 @@ const TimeBooth: React.FC = () => {
       } : undefined}
     >
       {hasStartedTimeTravel && (
-        <Button
-          variant="outline"
-          onClick={exitTimeTravel}
-          className="fixed top-4 right-4 bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm z-50"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Exit Time Travel
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            onClick={exitTimeTravel}
+            className="fixed top-4 right-4 bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm z-50"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Exit Time Travel
+          </Button>
+          
+          <div className="fixed top-4 left-4 z-50 flex gap-4">
+            <Button
+              variant={persona === 'girlfriend' ? 'default' : 'outline'}
+              onClick={() => setPersona('girlfriend')}
+              className="bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm"
+            >
+              <UserRound className="w-4 h-4 mr-2" />
+              Girlfriend
+            </Button>
+            <Button
+              variant={persona === 'homie' ? 'default' : 'outline'}
+              onClick={() => setPersona('homie')}
+              className="bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Homie
+            </Button>
+          </div>
+        </>
       )}
 
       {!hasStartedTimeTravel && (
@@ -195,25 +217,6 @@ const TimeBooth: React.FC = () => {
               <h1 className="text-3xl font-bold text-white text-center mb-6">Time Travel Portal</h1>
               
               <div className="space-y-6">
-                <div className="flex justify-center gap-4 mb-6">
-                  <Button
-                    variant={persona === 'girlfriend' ? 'default' : 'outline'}
-                    onClick={() => setPersona('girlfriend')}
-                    className="flex-1"
-                  >
-                    <UserRound className="w-4 h-4 mr-2" />
-                    Girlfriend
-                  </Button>
-                  <Button
-                    variant={persona === 'homie' ? 'default' : 'outline'}
-                    onClick={() => setPersona('homie')}
-                    className="flex-1"
-                  >
-                    <User className="w-4 h-4 mr-2" />
-                    Homie
-                  </Button>
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
                     Year

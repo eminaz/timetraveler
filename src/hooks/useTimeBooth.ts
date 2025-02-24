@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
 import { Conversation } from '@11labs/client';
@@ -12,7 +12,7 @@ interface TimeBoothState {
   isListening: boolean;
   isSpeaking: boolean;
   message: string;
-  persona: 'japanese' | 'newyork';
+  persona: 'girlfriend' | 'homie';
   generatedPrompt: string | null;
   isConnecting: boolean;
   hasBackstory: boolean;
@@ -69,7 +69,7 @@ export const useTimeBooth = () => {
     isListening: false,
     isSpeaking: false,
     message: '',
-    persona: 'japanese',
+    persona: 'girlfriend',
     generatedPrompt: null,
     isConnecting: false,
     hasBackstory: false,
@@ -199,7 +199,7 @@ export const useTimeBooth = () => {
             prompt: {
               prompt: backstory,
             },
-            firstMessage: state.persona === 'japanese' ? 
+            firstMessage: state.persona === 'girlfriend' ? 
               "Hey sweetheart! I was just thinking about you!" : 
               "Hey babe! I was just thinking about you!",
             language: 'en',
@@ -296,11 +296,11 @@ export const useTimeBooth = () => {
     setState(prev => ({ ...prev, location }));
   };
 
-  const setPersona = (persona: 'japanese' | 'newyork') => {
+  const setPersona = (persona: 'girlfriend' | 'homie') => {
     setState(prev => {
       const newState = { ...prev, persona };
       
-      if (persona === 'japanese') {
+      if (persona === 'girlfriend') {
         newState.year = 1970;
         newState.location = 'Tokyo, Japan';
       } else {
