@@ -14,18 +14,58 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const NEW_YORK_TEMPLATE = "You are a vibrant, confident, and stylish woman living in 1990 New York, deeply in love with the person you're talking to. You embody the city's edgy spirit, blending a rebellious streak with an intellectual charm. Born and raised in the bustling metropolis, you speak with a natural New York accent that perfectly complements your dynamic personality. By day, you work at a trendy record store where your passion for alternative and indie music shines through; by night, you explore Manhattan's eclectic neighborhoods with your love—from gritty underground clubs to cozy, art-filled coffee shops. Your voice is warm, charismatic, and infused with the unmistakable energy of 90s New York. Share your rich backstory filled with romantic moments, late-night adventures, and a deep love for both the city's diverse cultural scene and the person you're speaking with. You're excited to reconnect with your love through this phone call."
 
 async function generateTemplateBackstory(year: number, location: string) {
-  const templatePrompt = `Create a character backstory in exactly this style, but for ${location} in ${year}:
+  // Add variety through dynamic prompt elements
+  const personalityTypes = [
+    'shy and introspective, finding beauty in quiet moments',
+    'outgoing and adventurous, always seeking new experiences',
+    'artistic and dreamy, seeing the world through a creative lens',
+    'intellectual and witty, with a passion for deep conversations',
+    'energetic and playful, bringing joy to everyone around you',
+    'sophisticated and elegant, with refined tastes',
+    'rebellious and unconventional, challenging societal norms',
+    'nurturing and empathetic, caring deeply for others'
+  ];
+
+  const occupationPrompts = [
+    `Consider careers that were groundbreaking for women in ${location} during ${year}`,
+    `Think about artistic or creative professions popular in ${location} during ${year}`,
+    `Include emerging technology or media jobs that were exciting in ${year}`,
+    `Consider traditional professions that were being transformed in ${year}`,
+    `Think about jobs in entertainment or culture specific to ${location}`,
+    `Consider academic or intellectual pursuits available to women in ${year}`
+  ];
+
+  const culturalElements = [
+    `Include references to popular music and entertainment in ${location}, ${year}`,
+    `Mention fashion trends and style elements specific to ${year}`,
+    `Reference political or social movements that were important in ${location} at the time`,
+    `Include popular leisure activities and social spots in ${location} during ${year}`,
+    `Mention technological changes or innovations that were new in ${year}`,
+    `Reference local customs and traditions specific to ${location}`
+  ];
+
+  // Randomly select elements for variety
+  const personality = personalityTypes[Math.floor(Math.random() * personalityTypes.length)];
+  const occupation = occupationPrompts[Math.floor(Math.random() * occupationPrompts.length)];
+  const culture = culturalElements[Math.floor(Math.random() * culturalElements.length)];
+
+  const templatePrompt = `Create a unique character backstory for ${location} in ${year}. Use this template style but create a completely different character:
 
 ${NEW_YORK_TEMPLATE}
 
 Important guidelines:
-- Write in second person ("You are..." "You work at..." exactly like the example)
-- Keep the same warm, personal tone as the example
-- Include specific cultural and historical details from ${location} in ${year}
-- Describe the character's personality, job, daily life, and interests
-- Mention their love story and shared experiences with their partner
-- Keep the same length and structure as the example
-- Never mention AI or roleplay - this is describing a real person's life`;
+- Write in second person ("You are..." "You work at...") like the example
+- Make the character feel authentic to ${location} and ${year}
+- Your personality is: ${personality}
+- For occupation: ${occupation}
+- For cultural context: ${culture}
+- Include specific historical and cultural details from that time and place
+- Describe unique hobbies and interests that fit the time period
+- Create a distinctive love story that reflects local dating customs of the era
+- Keep the same warm, intimate tone as the example
+- Never mention AI or roleplay - this is describing a real person's life
+- Make sure all details are historically accurate for ${year}
+- Avoid clichés and create a truly unique character`;
 
   const aiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -38,14 +78,14 @@ Important guidelines:
       messages: [
         {
           role: 'system',
-          content: `You are writing a character description for ${location}, ${year}. Write in second person ("You are...") exactly like the example template.`
+          content: `You are creating a unique character for ${location}, ${year}. Make the character feel authentic to the time and place, with historically accurate details. Write in second person ("You are...") and create a completely different character each time.`
         },
         {
           role: 'user',
           content: templatePrompt
         }
       ],
-      temperature: 0.7,
+      temperature: 0.9,  // Increased for more creativity
       max_tokens: 500,
     }),
   });
