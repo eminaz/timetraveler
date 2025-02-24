@@ -42,6 +42,10 @@ const TimeBooth: React.FC = () => {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [hasStartedTimeTravel, setHasStartedTimeTravel] = useState(false);
   const [showPhoneButton, setShowPhoneButton] = useState(false);
+  const [hasSetInitialBackground] = useState(() => {
+    // 80% chance to use the panda image
+    return Math.random() < 0.8;
+  });
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   React.useEffect(() => {
@@ -179,10 +183,14 @@ const TimeBooth: React.FC = () => {
     <div 
       className={cn(
         "min-h-screen bg-cover bg-center transition-all duration-1000",
-        hasStartedTimeTravel ? "" : "bg-[url('https://v3.fal.media/files/monkey/20k3w3XhPbUn0tk0NxFaB.png')]"
+        hasStartedTimeTravel ? "" : "bg-[url('https://v3.fal.media/files/panda/ls0tuenrcMCzHuq4fVVu9.png')]"
       )}
       style={backgroundImage ? {
         backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      } : hasSetInitialBackground ? {
+        backgroundImage: "url('https://v3.fal.media/files/panda/ls0tuenrcMCzHuq4fVVu9.png')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       } : undefined}

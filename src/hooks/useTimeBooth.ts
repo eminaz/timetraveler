@@ -210,6 +210,12 @@ export const useTimeBooth = () => {
         conversationRef.current = null;
       }
 
+      const audioContext = new AudioContext();
+      const gainNode = audioContext.createGain();
+      gainNode.connect(audioContext.destination);
+      
+      gainNode.gain.value = selectedPersona === 'girlfriend' ? 1.5 : 0.8;
+
       conversationRef.current = await Conversation.startSession({
         agentId: agentId,
         onConnect: () => {
