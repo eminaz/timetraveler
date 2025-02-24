@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Phone, Mic, PhoneOff, Rocket } from 'lucide-react';
 import { Input } from './ui/input';
@@ -6,6 +7,8 @@ import { Switch } from './ui/switch';
 import { useTimeBooth } from '../hooks/useTimeBooth';
 import { cn } from '../lib/utils';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const TimeBooth: React.FC = () => {
   const {
@@ -52,34 +55,16 @@ const TimeBooth: React.FC = () => {
         throw new Error('Year and location are required');
       }
 
-      const response = await fetch('/functions/v1/generate-scene', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('generate-scene', {
+        body: { 
           year: Number(year),
           location: location.trim(),
-        }),
+        }
       });
 
-      console.log('Scene generation response status:', response.status);
-      
-      const responseText = await response.text();
-      console.log('Response text:', responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error('Failed to parse response:', responseText);
-        throw new Error('Invalid response from server');
-      }
-
-      if (!response.ok) {
-        console.error('Scene generation error:', data.error);
-        throw new Error(`Failed to generate scene: ${data.error}`);
+      if (error) {
+        console.error('Scene generation error:', error);
+        throw error;
       }
 
       console.log('Scene generation successful, got image URL:', data.image_url);
@@ -92,6 +77,7 @@ const TimeBooth: React.FC = () => {
       setIsGeneratingScene(false);
     } catch (error) {
       console.error('Failed to generate scene:', error);
+      toast.error('Failed to generate scene');
       setIsGeneratingScene(false);
       setIsPreparingCall(false);
     }
