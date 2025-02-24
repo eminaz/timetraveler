@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -43,6 +44,7 @@ const TimeBooth: React.FC = () => {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [hasStartedTimeTravel, setHasStartedTimeTravel] = useState(false);
   const [showPhoneButton, setShowPhoneButton] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const checkExistingScene = async () => {
     try {
@@ -142,16 +144,6 @@ const TimeBooth: React.FC = () => {
     }
   };
 
-  // Effect to handle phone button display
-  React.useEffect(() => {
-    // Show phone button when scene is ready AND backstory is generated
-    if (isPreparingCall && !isConnecting && !isPickedUp && hasBackstory) {
-      setShowPhoneButton(true);
-    } else {
-      setShowPhoneButton(false);
-    }
-  }, [isPreparingCall, isConnecting, isPickedUp, hasBackstory]);
-
   const exitTimeTravel = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -169,29 +161,16 @@ const TimeBooth: React.FC = () => {
     }
   };
 
-  const handlePickupPhone = () => {
-    setShowPhoneButton(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    callGirlfriend();
-  };
-
-  // Effect to handle phone ringing when agent is ready
+  // Effect to handle phone button display
   React.useEffect(() => {
-    // Only show phone and play ring when scene is ready AND backstory is generated
+    // Show phone button when scene is ready AND backstory is generated
     if (isPreparingCall && !isConnecting && !isPickedUp && hasBackstory) {
       setShowPhoneButton(true);
-      // Create new audio element and store it in ref
-      audioRef.current = new Audio('/phone-ring.mp3');
-      audioRef.current.loop = true;
-      audioRef.current.play().catch(error => {
-        console.error('Failed to play audio:', error);
-      });
+    } else {
+      setShowPhoneButton(false);
     }
   }, [isPreparingCall, isConnecting, isPickedUp, hasBackstory]);
-  
+
   return (
     <div 
       className={cn(
@@ -282,7 +261,6 @@ const TimeBooth: React.FC = () => {
           </div>
         </div>
       ) : (
-        // Time travel experience UI
         <div className="min-h-screen relative">
           {isGeneratingScene && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40">
@@ -300,7 +278,7 @@ const TimeBooth: React.FC = () => {
                   "phone flex items-center justify-center cursor-pointer",
                   isRinging && "animate-ring"
                 )}
-                onClick={handlePickupPhone}
+                onClick={callGirlfriend}
               >
                 <Phone className="w-8 h-8 text-booth-dark" />
               </div>
