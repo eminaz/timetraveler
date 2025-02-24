@@ -13,7 +13,27 @@ serve(async (req) => {
   }
 
   try {
-    const { year, location } = await req.json()
+    // Validate that we have a request body
+    const requestText = await req.text();
+    if (!requestText) {
+      throw new Error('Request body is empty');
+    }
+
+    // Parse the JSON body
+    let year, location;
+    try {
+      const body = JSON.parse(requestText);
+      year = body.year;
+      location = body.location;
+    } catch (e) {
+      throw new Error(`Invalid JSON: ${requestText}`);
+    }
+
+    // Validate required parameters
+    if (!year || !location) {
+      throw new Error(`Missing required parameters. Got: year=${year}, location=${location}`);
+    }
+
     console.log('Generating scene for:', { year, location });
 
     const prompt = `from a first-person view, looking out from an empty balcony onto the streets below in ${location} during ${year}. Capture the distinctive atmosphere of that era with period-specific architecture, vehicles, street signage, and ambient lighting that evoke a nostalgic, cinematic feel. Ensure the balcony frame is visible in the foreground to emphasize the immersive perspective of observing the urban environment.`

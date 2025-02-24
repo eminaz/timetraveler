@@ -47,22 +47,41 @@ const TimeBooth: React.FC = () => {
       setIsPreparingCall(true);
 
       console.log('Starting scene generation for:', { year, location });
+      
+      if (!year || !location) {
+        throw new Error('Year and location are required');
+      }
+
       const response = await fetch('/functions/v1/generate-scene', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: JSON.stringify({ year, location }),
+        body: JSON.stringify({
+          year: Number(year),
+          location: location.trim(),
+        }),
       });
 
       console.log('Scene generation response status:', response.status);
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Scene generation error:', errorText);
-        throw new Error(`Failed to generate scene: ${errorText}`);
+      
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response:', responseText);
+        throw new Error('Invalid response from server');
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        console.error('Scene generation error:', data.error);
+        throw new Error(`Failed to generate scene: ${data.error}`);
+      }
+
       console.log('Scene generation successful, got image URL:', data.image_url);
       setBackgroundImage(data.image_url);
 
