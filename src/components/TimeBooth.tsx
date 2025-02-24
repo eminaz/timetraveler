@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft } from 'lucide-react';
 import { Input } from './ui/input';
@@ -47,11 +48,25 @@ const TimeBooth: React.FC = () => {
     return Math.random() < 0.8;
   });
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [loadingVideoUrl, setLoadingVideoUrl] = useState<string>('https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4');
 
   React.useEffect(() => {
     const video = document.createElement('video');
     video.preload = 'auto';
+    
+    // Test if primary video URL is available
     video.src = 'https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4';
+    
+    const handleError = () => {
+      console.log('Primary video not available, using fallback');
+      setLoadingVideoUrl('https://bxtwhvvgykntbmpwtitx.supabase.co/storage/v1/object/public/videos//timetravel-loadingstate.mp4');
+    };
+
+    video.addEventListener('error', handleError);
+
+    return () => {
+      video.removeEventListener('error', handleError);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -311,7 +326,7 @@ const TimeBooth: React.FC = () => {
             className="absolute inset-0 w-full h-full object-cover"
             style={{ backgroundColor: 'black' }}
           >
-            <source src="https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4" type="video/mp4" />
+            <source src={loadingVideoUrl} type="video/mp4" />
           </video>
           <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md">
             <div className="glass-panel p-4 mx-4">
