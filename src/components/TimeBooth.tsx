@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Phone, Mic, PhoneOff, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
+import { Phone, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { useTimeBooth } from '../hooks/useTimeBooth';
@@ -14,7 +14,6 @@ const TimeBooth: React.FC = () => {
     location,
     isRinging,
     isPickedUp,
-    generatedImage,
     isListening,
     isSpeaking,
     message,
@@ -32,17 +31,8 @@ const TimeBooth: React.FC = () => {
   const [isPreparingCall, setIsPreparingCall] = useState(false);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [hasStartedTimeTravel, setHasStartedTimeTravel] = useState(false);
+  const [showPhoneButton, setShowPhoneButton] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const handleSubmitMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const input = (e.target as HTMLFormElement).elements.namedItem('message') as HTMLInputElement;
-    const text = input.value.trim();
-    if (text) {
-      await speak(text);
-      input.value = '';
-    }
-  };
 
   const startTimeTravel = async () => {
     try {
@@ -69,6 +59,7 @@ const TimeBooth: React.FC = () => {
       setBackgroundImage(data.image_url);
       setIsGeneratingScene(false);
       setIsPreparingCall(true);
+      setShowPhoneButton(true);
 
       // Create new audio element and store it in ref
       audioRef.current = new Audio('/phone-ring.mp3');
@@ -86,18 +77,26 @@ const TimeBooth: React.FC = () => {
     }
   };
 
+  const handlePickupPhone = () => {
+    setShowPhoneButton(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    pickupPhone();
+  };
+
   const exitTimeTravel = () => {
-    // Stop the ringing sound if it's playing
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
     
-    // Reset all states
     setHasStartedTimeTravel(false);
     setIsPreparingCall(false);
     setBackgroundImage(null);
     setIsGeneratingScene(false);
+    setShowPhoneButton(false);
     
     if (isPickedUp) {
       hangupPhone();
@@ -107,147 +106,123 @@ const TimeBooth: React.FC = () => {
   return (
     <div 
       className={cn(
-        "min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex items-center justify-center transition-all duration-500",
+        "min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 transition-all duration-1000",
         backgroundImage && "bg-none"
       )}
       style={backgroundImage ? {
-        backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url(${backgroundImage})`,
+        backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       } : undefined}
     >
+      {hasStartedTimeTravel && (
+        <Button
+          variant="outline"
+          onClick={exitTimeTravel}
+          className="fixed top-4 right-4 bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Exit Time Travel
+        </Button>
+      )}
+
       {!hasStartedTimeTravel ? (
         // Initial UI for selecting year and location
-        <div className="phone-booth">
-          <div className="phone-booth-window">
-            <div className="flex flex-col h-full">
-              <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-white">Time Booth</h1>
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPersona(persona === 'japanese' ? 'newyork' : 'japanese')}
-                    className="text-white"
-                  >
-                    {persona === 'japanese' ? '🇯🇵 Japanese' : '🗽 New York'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={startTimeTravel}
-                    disabled={isGeneratingScene || !location || !year}
-                    className={cn(
-                      "bg-gold hover:bg-gold/90 text-black",
-                      isGeneratingScene && "opacity-50"
-                    )}
-                  >
-                    <Rocket className="w-4 h-4 mr-2" />
-                    Start Time Travel
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="glass-panel p-4">
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Year
-                  </label>
-                  <input
-                    type="range"
-                    min="1800"
-                    max="2024"
-                    value={year}
-                    onChange={(e) => setYear(Number(e.target.value))}
-                    className="timeline-slider"
-                  />
-                  <span className="block text-center text-gold text-xl mt-2">
-                    {year}
-                  </span>
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="phone-booth">
+            <div className="phone-booth-window">
+              <div className="flex flex-col h-full">
+                <div className="flex justify-between items-center mb-6">
+                  <h1 className="text-2xl font-bold text-white">Time Booth</h1>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setPersona(persona === 'japanese' ? 'newyork' : 'japanese')}
+                      className="text-white"
+                    >
+                      {persona === 'japanese' ? '🇯🇵 Japanese' : '🗽 New York'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={startTimeTravel}
+                      disabled={isGeneratingScene || !location || !year}
+                      className={cn(
+                        "bg-gold hover:bg-gold/90 text-black",
+                        isGeneratingScene && "opacity-50"
+                      )}
+                    >
+                      <Rocket className="w-4 h-4 mr-2" />
+                      Start Time Travel
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="glass-panel p-4">
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Location
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Enter a location..."
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="bg-white bg-opacity-10 text-white placeholder:text-gray-400"
-                  />
+                <div className="space-y-6">
+                  <div className="glass-panel p-4">
+                    <label className="block text-sm font-medium text-white mb-2">
+                      Year
+                    </label>
+                    <input
+                      type="range"
+                      min="1800"
+                      max="2024"
+                      value={year}
+                      onChange={(e) => setYear(Number(e.target.value))}
+                      className="timeline-slider"
+                    />
+                    <span className="block text-center text-gold text-xl mt-2">
+                      {year}
+                    </span>
+                  </div>
+
+                  <div className="glass-panel p-4">
+                    <label className="block text-sm font-medium text-white mb-2">
+                      Location
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Enter a location..."
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="bg-white bg-opacity-10 text-white placeholder:text-gray-400"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       ) : (
-        // Time travel UI (loading, ringing phone, or conversation)
-        <div className="relative w-full max-w-md mx-auto">
-          <Button
-            variant="outline"
-            onClick={exitTimeTravel}
-            className="absolute top-4 left-4 bg-white/10 hover:bg-white/20 text-white"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Exit
-          </Button>
-
-          {isGeneratingScene ? (
-            <div className="text-center text-white space-y-4">
-              <Loader2 className="w-12 h-12 animate-spin mx-auto" />
-              <p className="text-xl">Generating your time travel destination...</p>
+        // Time travel experience UI
+        <div className="min-h-screen relative">
+          {isGeneratingScene && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <div className="text-center text-white space-y-4">
+                <Loader2 className="w-12 h-12 animate-spin mx-auto" />
+                <p className="text-xl">Generating your time travel destination...</p>
+              </div>
             </div>
-          ) : isPreparingCall && !isPickedUp ? (
-            <div className="text-center space-y-6">
+          )}
+
+          {showPhoneButton && (
+            <div className="absolute top-24 right-8">
               <div
                 className={cn(
-                  "phone mx-auto flex items-center justify-center",
+                  "phone flex items-center justify-center",
                   isRinging && "animate-ring"
                 )}
-                onClick={pickupPhone}
+                onClick={handlePickupPhone}
               >
                 <Phone className="w-8 h-8 text-booth-dark" />
               </div>
-              <p className="text-white text-xl">
-                {isRinging ? "Pick up the phone to begin your journey..." : "Connecting..."}
-              </p>
             </div>
-          ) : isPickedUp && (
-            <div className="glass-panel p-6 space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-white text-xl font-medium">Time Travel Chat</h2>
-                <Button
-                  variant="destructive"
-                  onClick={hangupPhone}
-                  disabled={isConnecting}
-                  className="flex items-center gap-2"
-                >
-                  <PhoneOff className="w-4 h-4" />
-                  Hang Up
-                </Button>
+          )}
+
+          {message && (
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+              <div className="glass-panel p-4 max-w-md mx-auto">
+                <p className="text-white">{message}</p>
               </div>
-
-              {message && (
-                <div className="glass-panel p-4">
-                  <p className="text-white">{message}</p>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmitMessage} className="flex gap-2">
-                <Input
-                  name="message"
-                  placeholder="Type your message..."
-                  className="bg-white bg-opacity-10 text-white placeholder:text-gray-400"
-                  disabled={isListening || isSpeaking}
-                />
-                <Button 
-                  type="submit"
-                  disabled={isListening || isSpeaking}
-                  className="bg-gold hover:bg-gold/90"
-                >
-                  Send
-                </Button>
-              </form>
             </div>
           )}
         </div>
