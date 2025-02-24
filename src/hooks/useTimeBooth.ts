@@ -195,9 +195,9 @@ export const useTimeBooth = () => {
               prompt: backstory,
             },
             firstMessage: state.persona === 'japanese' ? 
-              "Hello? Who's this calling? *with a Japanese accent*" : 
-              "Hey babe! I was just thinking about you! *with a New York accent*",
-            language: 'en', // Always use English
+              "Hey sweetheart! I was just thinking about you!" : 
+              "Hey babe! I was just thinking about you!",
+            language: 'en',
           },
         },
       });

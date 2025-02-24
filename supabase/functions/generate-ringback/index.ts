@@ -38,66 +38,31 @@ serve(async (req) => {
       );
     }
 
-    // Generate new ringback tone using fal.ai queue API
-    const queueResponse = await fetch('https://queue.fal.run/fal-ai/stable-audio', {
+    // Generate new ringback tone using fal.ai
+    const response = await fetch('https://110602490-stable-audio.gateway.alpha.fal.ai/', {
       method: 'POST',
       headers: {
-        'Authorization': `Key ${Deno.env.get('FAL_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('FAL_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         prompt: `phone ringback tone from ${year}, old telephone style`,
+        model_name: 'melody',
+        duration_seconds: 5
       }),
     });
 
-    if (!queueResponse.ok) {
-      const errorData = await queueResponse.text();
-      console.error('Fal.ai queue API error:', errorData);
-      throw new Error(`Failed to queue audio generation: ${errorData}`);
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Fal.ai API error:', errorData);
+      throw new Error(`Failed to generate audio: ${errorData}`);
     }
 
-    const queueData = await queueResponse.json();
-    console.log('Queue response:', queueData);
+    const audioData = await response.json();
+    const audioUrl = audioData.audio_url;
 
-    if (!queueData.request_id) {
-      throw new Error('No request ID in queue response');
-    }
-
-    // Poll for the result
-    let attempts = 0;
-    const maxAttempts = 30; // 30 seconds timeout
-    let resultData = null;
-
-    while (attempts < maxAttempts) {
-      const resultResponse = await fetch(`https://queue.fal.run/fal-ai/stable-audio/status/${queueData.request_id}`, {
-        headers: {
-          'Authorization': `Key ${Deno.env.get('FAL_KEY')}`,
-        },
-      });
-
-      if (!resultResponse.ok) {
-        console.error('Error checking status:', await resultResponse.text());
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-        attempts++;
-        continue;
-      }
-
-      const status = await resultResponse.json();
-      console.log('Status response:', status);
-
-      if (status.status === 'COMPLETED' && status.output?.audio_url) {
-        resultData = status.output;
-        break;
-      } else if (status.status === 'FAILED') {
-        throw new Error('Audio generation failed: ' + status.error);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-      attempts++;
-    }
-
-    if (!resultData?.audio_url) {
-      throw new Error('Failed to get audio URL after maximum attempts');
+    if (!audioUrl) {
+      throw new Error('No audio URL in response');
     }
 
     // Save the new tone to the database
@@ -105,11 +70,11 @@ serve(async (req) => {
       .from('ringback_tones')
       .insert([{ 
         year: baseYear,
-        audio_url: resultData.audio_url,
+        audio_url: audioUrl,
       }]);
 
     return new Response(
-      JSON.stringify({ audio_url: resultData.audio_url }),
+      JSON.stringify({ audio_url: audioUrl }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
