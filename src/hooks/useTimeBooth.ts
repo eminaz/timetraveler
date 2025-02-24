@@ -107,7 +107,7 @@ export const useTimeBooth = () => {
   };
 
   const generateBackstory = async () => {
-    console.log('Generating backstory for:', { year: state.year, location: state.location });
+    console.log('Generating backstory for:', { year: state.year, location: state.location, persona: state.persona });
     try {
       setState(prev => ({ ...prev, hasBackstory: false }));
       
@@ -116,6 +116,7 @@ export const useTimeBooth = () => {
           prompt: 'generate backstory',
           year: state.year,
           location: state.location,
+          persona: state.persona,
           useDeepseek: true
         }
       });
@@ -314,6 +315,12 @@ export const useTimeBooth = () => {
     if (state.isPickedUp) {
       hangupPhone();
     }
+
+    setState(prev => ({
+      ...prev,
+      generatedPrompt: null,
+      hasBackstory: false
+    }));
   };
 
   return {
