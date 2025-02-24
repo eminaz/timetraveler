@@ -1,5 +1,4 @@
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Phone, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -31,11 +30,12 @@ const TimeBooth: React.FC = () => {
     hasBackstory,
     setYear,
     setLocation,
-    pickupPhone,
+    callGirlfriend,
     hangupPhone,
     speak,
     setPersona,
     generateBackstory,
+    generateRingbackTone,
   } = useTimeBooth();
 
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
@@ -43,7 +43,6 @@ const TimeBooth: React.FC = () => {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [hasStartedTimeTravel, setHasStartedTimeTravel] = useState(false);
   const [showPhoneButton, setShowPhoneButton] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const checkExistingScene = async () => {
     try {
@@ -91,10 +90,11 @@ const TimeBooth: React.FC = () => {
         throw new Error('Year and location are required');
       }
 
-      // Start both scene and backstory generation in parallel
-      const [existingImageUrl, backstoryPromise] = await Promise.all([
+      // Start scene, backstory, and ringback tone generation in parallel
+      const [existingImageUrl, backstoryPromise, ringbackTonePromise] = await Promise.all([
         checkExistingScene(),
-        generateBackstory()
+        generateBackstory(),
+        generateRingbackTone()
       ]);
       
       let imageUrl;
@@ -113,14 +113,21 @@ const TimeBooth: React.FC = () => {
         if (error) throw error;
 
         imageUrl = data.image_url;
-        // Save the new scene in the background
         await saveScene(imageUrl);
       }
 
-      // Wait for backstory to complete
-      const backstory = await backstoryPromise;
+      // Wait for backstory and ringback tone to complete
+      const [backstory, ringbackTone] = await Promise.all([
+        backstoryPromise,
+        ringbackTonePromise
+      ]);
+      
       if (!backstory) {
         throw new Error('Failed to generate backstory');
+      }
+
+      if (!ringbackTone) {
+        throw new Error('Failed to generate ringback tone');
       }
 
       console.log('Setting background image:', imageUrl);
@@ -135,14 +142,15 @@ const TimeBooth: React.FC = () => {
     }
   };
 
-  const handlePickupPhone = () => {
-    setShowPhoneButton(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+  // Effect to handle phone button display
+  React.useEffect(() => {
+    // Show phone button when scene is ready AND backstory is generated
+    if (isPreparingCall && !isConnecting && !isPickedUp && hasBackstory) {
+      setShowPhoneButton(true);
+    } else {
+      setShowPhoneButton(false);
     }
-    pickupPhone();
-  };
+  }, [isPreparingCall, isConnecting, isPickedUp, hasBackstory]);
 
   const exitTimeTravel = () => {
     if (audioRef.current) {
@@ -161,6 +169,15 @@ const TimeBooth: React.FC = () => {
     }
   };
 
+  const handlePickupPhone = () => {
+    setShowPhoneButton(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    callGirlfriend();
+  };
+
   // Effect to handle phone ringing when agent is ready
   React.useEffect(() => {
     // Only show phone and play ring when scene is ready AND backstory is generated
@@ -174,7 +191,7 @@ const TimeBooth: React.FC = () => {
       });
     }
   }, [isPreparingCall, isConnecting, isPickedUp, hasBackstory]);
-
+  
   return (
     <div 
       className={cn(

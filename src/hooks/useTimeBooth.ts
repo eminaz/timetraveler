@@ -17,6 +17,7 @@ interface TimeBoothState {
   generatedPrompt: string | null;
   isConnecting: boolean;
   hasBackstory: boolean;
+  ringbackToneUrl: string | null;
 }
 
 class AudioQueue {
@@ -63,7 +64,7 @@ export const useTimeBooth = () => {
   const [state, setState] = useState<TimeBoothState>({
     year: 1970,
     location: 'Tokyo, Japan',
-    isRinging: true,
+    isRinging: false,
     isPickedUp: false,
     generatedImage: null,
     isListening: false,
@@ -72,7 +73,8 @@ export const useTimeBooth = () => {
     persona: 'japanese',
     generatedPrompt: null,
     isConnecting: false,
-    hasBackstory: false
+    hasBackstory: false,
+    ringbackToneUrl: null
   });
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -80,6 +82,24 @@ export const useTimeBooth = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioQueue | null>(null);
   const conversationRef = useRef<any>(null);
+  const ringbackAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const generateRingbackTone = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-ringback', {
+        body: { year: state.year }
+      });
+
+      if (error) throw error;
+
+      setState(prev => ({ ...prev, ringbackToneUrl: data.audio_url }));
+      return data.audio_url;
+    } catch (error) {
+      console.error('Failed to generate ringback tone:', error);
+      toast.error('Failed to generate ringback tone');
+      return null;
+    }
+  };
 
   const generateBackstory = async () => {
     console.log('Generating backstory for:', { year: state.year, location: state.location });
@@ -119,10 +139,16 @@ export const useTimeBooth = () => {
     try {
       setState(prev => ({ ...prev, isConnecting: true }));
       
-      console.log('Starting conversation...');
-      const backstory = await generateBackstory();
+      // Stop ringback tone if playing
+      if (ringbackAudioRef.current) {
+        ringbackAudioRef.current.pause();
+        ringbackAudioRef.current = null;
+      }
+
+      // Use existing backstory since it was generated during time travel
+      const backstory = state.generatedPrompt;
       if (!backstory) {
-        throw new Error('Failed to generate backstory');
+        throw new Error('No backstory available');
       }
 
       console.log('Requesting microphone access...');
@@ -141,7 +167,7 @@ export const useTimeBooth = () => {
             ...prev, 
             isListening: false, 
             isPickedUp: false,
-            isRinging: true,
+            isRinging: false,
             message: '',
             isConnecting: false,
             hasBackstory: false
@@ -170,7 +196,7 @@ export const useTimeBooth = () => {
             prompt: {
               prompt: backstory,
             },
-            firstMessage: "I know you would pick it up. I've been waiting for you...",
+            firstMessage: "Hello? Who's calling?",
             language: 'en',
           },
         },
@@ -183,22 +209,33 @@ export const useTimeBooth = () => {
         ...prev, 
         isConnecting: false,
         isPickedUp: false,
-        isRinging: true,
+        isRinging: false,
         hasBackstory: false
       }));
     }
   };
 
-  const pickupPhone = async () => {
+  const callGirlfriend = async () => {
     if (state.isConnecting || state.isPickedUp) return;
     
     setState(prev => ({
       ...prev,
-      isRinging: false,
-      isPickedUp: true,
+      isRinging: true,
     }));
 
-    await connectWebRTC();
+    // Play ringback tone
+    if (state.ringbackToneUrl) {
+      ringbackAudioRef.current = new Audio(state.ringbackToneUrl);
+      ringbackAudioRef.current.loop = true;
+      await ringbackAudioRef.current.play();
+    }
+
+    // Random delay between 1-5 seconds before pickup
+    const delay = Math.floor(Math.random() * 4000) + 1000;
+    setTimeout(async () => {
+      setState(prev => ({ ...prev, isPickedUp: true }));
+      await connectWebRTC();
+    }, delay);
   };
 
   const hangupPhone = () => {
@@ -207,9 +244,15 @@ export const useTimeBooth = () => {
       conversationRef.current = null;
     }
 
+    // Stop ringback tone if playing
+    if (ringbackAudioRef.current) {
+      ringbackAudioRef.current.pause();
+      ringbackAudioRef.current = null;
+    }
+
     setState(prev => ({
       ...prev,
-      isRinging: true,
+      isRinging: false,
       isPickedUp: false,
       generatedImage: null,
       message: '',
@@ -258,7 +301,6 @@ export const useTimeBooth = () => {
 
     if (state.isPickedUp) {
       hangupPhone();
-      setTimeout(() => pickupPhone(), 500);
     }
   };
 
@@ -266,10 +308,11 @@ export const useTimeBooth = () => {
     ...state,
     setYear,
     setLocation,
-    pickupPhone,
+    callGirlfriend,
     hangupPhone,
     speak,
     setPersona,
-    generateBackstory, // Expose the generateBackstory function
+    generateBackstory,
+    generateRingbackTone,
   };
 };
