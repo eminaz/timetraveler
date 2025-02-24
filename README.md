@@ -9,7 +9,7 @@ TimeTraveler is an innovative time travel experience that transports you to diff
 As a project built for a hackathon, I embraced dual roles as both PM and Tech Lead—reviewing code, troubleshooting regressions, and guiding the development process to create a polished, seamless experience.
 
 ## Project Info
-**Project URL:** [https://lovable.dev/projects/1bef0bdf-b53a-4f50-a40c-2d3aad1f0582](https://lovable.dev/projects/1bef0bdf-b53a-4f50-a40c-2d3aad1f0582)
+https://timetraveler.lovable.app/
 
 # Install the necessary dependencies.
 npm install
@@ -17,16 +17,18 @@ npm install
 #  Start the development server with auto-reloading.
 npm run dev
 
-Technologies Used
+## Technologies Used
+
 This project is built with:
 
-Vite
-TypeScript
-React
-shadcn-ui
-Tailwind CSS
+- **Vite**
+- **TypeScript**
+- **React**
+- **shadcn-ui**
+- **Tailwind CSS**
+
 Additional integrations include:
 
-ElevenLabs Conversation AI: For generating lifelike, context-aware voice interactions.
-fal.ai (Flux): For rapid generation of immersive historical and futuristic images.
-deepseek: For creating rich backstories for our personalized personas.
+- **ElevenLabs Conversation AI:** For generating lifelike, context-aware voice interactions.
+- **fal.ai (Flux):** For rapid generation of immersive historical and futuristic images.
+- **deepseek:** For creating rich backstories for our personalized personas.
