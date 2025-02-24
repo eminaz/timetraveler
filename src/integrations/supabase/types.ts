@@ -39,6 +39,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ringback_tones: {
+        Row: {
+          audio_url: string
+          created_at: string | null
+          id: string
+          year: number
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string | null
+          id?: string
+          year: number
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string | null
+          id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       scenes: {
         Row: {
           created_at: string | null
