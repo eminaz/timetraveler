@@ -34,6 +34,41 @@ const TimeBooth: React.FC = () => {
   const [showPhoneButton, setShowPhoneButton] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const checkExistingScene = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('scenes')
+        .select('image_url')
+        .eq('year', year)
+        .eq('location', location.trim())
+        .single();
+
+      if (error) throw error;
+      return data?.image_url;
+    } catch (error) {
+      console.error('Error checking existing scene:', error);
+      return null;
+    }
+  };
+
+  const saveScene = async (imageUrl: string) => {
+    try {
+      const { error } = await supabase
+        .from('scenes')
+        .insert([{
+          year: year,
+          location: location.trim(),
+          image_url: imageUrl
+        }])
+        .maybeSingle();
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving scene:', error);
+      // Don't show error to user as this is not critical
+    }
+  };
+
   const startTimeTravel = async () => {
     try {
       setIsGeneratingScene(true);
@@ -43,32 +78,36 @@ const TimeBooth: React.FC = () => {
         throw new Error('Year and location are required');
       }
 
-      const { data, error } = await supabase.functions.invoke('generate-scene', {
-        body: { 
-          year: Number(year),
-          location: location.trim(),
-        }
-      });
+      // First check if we already have this scene
+      const existingImageUrl = await checkExistingScene();
+      
+      let imageUrl;
+      if (existingImageUrl) {
+        console.log('Using existing scene from database');
+        imageUrl = existingImageUrl;
+      } else {
+        console.log('Generating new scene');
+        const { data, error } = await supabase.functions.invoke('generate-scene', {
+          body: { 
+            year: Number(year),
+            location: location.trim(),
+          }
+        });
 
-      if (error) {
-        console.error('Scene generation error:', error);
-        throw error;
+        if (error) throw error;
+
+        imageUrl = data.image_url;
+        // Save the new scene in the background
+        await saveScene(imageUrl);
       }
 
-      console.log('Scene generation successful, got image URL:', data.image_url);
-      setBackgroundImage(data.image_url);
+      console.log('Setting background image:', imageUrl);
+      setBackgroundImage(imageUrl);
       setIsGeneratingScene(false);
       setIsPreparingCall(true);
-      setShowPhoneButton(true);
 
-      // Create new audio element and store it in ref
-      audioRef.current = new Audio('/phone-ring.mp3');
-      audioRef.current.loop = true;
-      try {
-        await audioRef.current.play();
-      } catch (error) {
-        console.error('Failed to play audio:', error);
-      }
+      // Don't show the phone button immediately - wait for the agent to be ready
+      // The phone button will be shown when isPreparingCall is true AND the agent is ready
     } catch (error) {
       console.error('Failed to generate scene:', error);
       toast.error('Failed to generate scene');
@@ -103,6 +142,19 @@ const TimeBooth: React.FC = () => {
     }
   };
 
+  // Effect to handle phone ringing when agent is ready
+  React.useEffect(() => {
+    if (isPreparingCall && !isConnecting && !isPickedUp) {
+      setShowPhoneButton(true);
+      // Create new audio element and store it in ref
+      audioRef.current = new Audio('/phone-ring.mp3');
+      audioRef.current.loop = true;
+      audioRef.current.play().catch(error => {
+        console.error('Failed to play audio:', error);
+      });
+    }
+  }, [isPreparingCall, isConnecting, isPickedUp]);
+
   return (
     <div 
       className={cn(
@@ -119,7 +171,7 @@ const TimeBooth: React.FC = () => {
         <Button
           variant="outline"
           onClick={exitTimeTravel}
-          className="fixed top-4 right-4 bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm"
+          className="fixed top-4 right-4 bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm z-50"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Exit Time Travel
@@ -196,7 +248,7 @@ const TimeBooth: React.FC = () => {
         // Time travel experience UI
         <div className="min-h-screen relative">
           {isGeneratingScene && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40">
               <div className="text-center text-white space-y-4">
                 <Loader2 className="w-12 h-12 animate-spin mx-auto" />
                 <p className="text-xl">Generating your time travel destination...</p>
@@ -205,10 +257,10 @@ const TimeBooth: React.FC = () => {
           )}
 
           {showPhoneButton && (
-            <div className="absolute top-24 right-8">
+            <div className="absolute top-24 right-8 z-40">
               <div
                 className={cn(
-                  "phone flex items-center justify-center",
+                  "phone flex items-center justify-center cursor-pointer",
                   isRinging && "animate-ring"
                 )}
                 onClick={handlePickupPhone}
@@ -219,7 +271,7 @@ const TimeBooth: React.FC = () => {
           )}
 
           {message && (
-            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-40">
               <div className="glass-panel p-4 max-w-md mx-auto">
                 <p className="text-white">{message}</p>
               </div>
