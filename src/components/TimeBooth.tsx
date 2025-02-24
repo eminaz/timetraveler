@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Phone, Rocket, ArrowLeft } from 'lucide-react';
+import { Phone, Rocket, ArrowLeft, User, UserRound } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { useTimeBooth } from '../hooks/useTimeBooth';
@@ -34,6 +34,7 @@ const TimeBooth: React.FC = () => {
     speak,
     generateBackstory,
     generateRingbackTone,
+    setPersona,
   } = useTimeBooth();
 
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
@@ -194,6 +195,25 @@ const TimeBooth: React.FC = () => {
               <h1 className="text-3xl font-bold text-white text-center mb-6">Time Travel Portal</h1>
               
               <div className="space-y-6">
+                <div className="flex justify-center gap-4 mb-6">
+                  <Button
+                    variant={persona === 'girlfriend' ? 'default' : 'outline'}
+                    onClick={() => setPersona('girlfriend')}
+                    className="flex-1"
+                  >
+                    <UserRound className="w-4 h-4 mr-2" />
+                    Girlfriend
+                  </Button>
+                  <Button
+                    variant={persona === 'homie' ? 'default' : 'outline'}
+                    onClick={() => setPersona('homie')}
+                    className="flex-1"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Homie
+                  </Button>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
                     Year
@@ -274,8 +294,10 @@ const TimeBooth: React.FC = () => {
           >
             <source src="https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4" type="video/mp4" />
           </video>
-          <div className="relative text-center text-white space-y-4 p-6 rounded-lg">
-            <p className="text-xl">Generating your time travel destination...</p>
+          <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md">
+            <div className="glass-panel p-4 mx-4">
+              <p className="text-white text-xl text-center">Generating your time travel destination...</p>
+            </div>
           </div>
         </div>
       )}
