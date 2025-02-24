@@ -251,32 +251,32 @@ const TimeBooth: React.FC = () => {
       {(showPhoneButton || isPickedUp) && (
         <div className="fixed top-24 right-8 z-40 flex flex-col gap-4">
           {isPickedUp ? (
-            <div
-              className="phone flex items-center justify-center cursor-pointer"
+            <Button
+              variant="destructive"
+              className="bg-booth-red hover:bg-booth-dark text-white"
               onClick={hangupPhone}
             >
-              <Phone className="w-8 h-8 text-booth-dark rotate-135" />
-            </div>
+              <Phone className="w-4 h-4 rotate-135" />
+              Hang Up
+            </Button>
           ) : (
             <>
-              <div
-                className={cn(
-                  "phone flex items-center justify-center cursor-pointer",
-                  isRinging && persona === 'girlfriend' && "animate-ring"
-                )}
+              <Button
+                className="bg-pink-400 hover:bg-pink-500 text-white"
                 onClick={() => handleCall('girlfriend')}
+                disabled={isRinging || isConnecting}
               >
-                <Phone className="w-8 h-8 text-pink-400" />
-              </div>
-              <div
-                className={cn(
-                  "phone flex items-center justify-center cursor-pointer",
-                  isRinging && persona === 'homie' && "animate-ring"
-                )}
+                <Phone className="w-4 h-4" />
+                Call Girlfriend
+              </Button>
+              <Button
+                className="bg-blue-400 hover:bg-blue-500 text-white"
                 onClick={() => handleCall('homie')}
+                disabled={isRinging || isConnecting}
               >
-                <Phone className="w-8 h-8 text-blue-400" />
-              </div>
+                <Phone className="w-4 h-4" />
+                Call Homie
+              </Button>
             </>
           )}
         </div>
