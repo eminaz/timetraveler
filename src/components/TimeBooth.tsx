@@ -81,6 +81,10 @@ const TimeBooth: React.FC = () => {
     }
   };
 
+  const generateFuturePrompt = (location: string, year: number) => {
+    return `Generate an image from a first-person view, looking out from an empty balcony onto the streets below in ${location} during ${year}. Capture the distinctive atmosphere of the future with sleek, futuristic architecture, advanced vehicles, digital street signage, and ambient lighting that evoke a cinematic, high-tech feel. Ensure the balcony frame is visible in the foreground to emphasize the immersive perspective of observing an urban environment transformed by innovation and technology.`;
+  };
+
   const startTimeTravel = async () => {
     try {
       setIsGeneratingScene(true);
@@ -109,6 +113,7 @@ const TimeBooth: React.FC = () => {
           body: { 
             year: Number(year),
             location: location.trim(),
+            customPrompt: year > 2030 ? generateFuturePrompt(location.trim(), year) : undefined
           }
         });
 
@@ -190,8 +195,8 @@ const TimeBooth: React.FC = () => {
                   </label>
                   <input
                     type="range"
-                    min="1990"
-                    max="3000"
+                    min="1900"
+                    max="2100"
                     value={year}
                     onChange={(e) => setYear(Number(e.target.value))}
                     className="timeline-slider"
