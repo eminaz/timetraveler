@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -269,5 +270,6 @@ export const useTimeBooth = () => {
     hangupPhone,
     speak,
     setPersona,
+    generateBackstory, // Expose the generateBackstory function
   };
 };

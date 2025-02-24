@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
@@ -34,6 +35,7 @@ const TimeBooth: React.FC = () => {
     hangupPhone,
     speak,
     setPersona,
+    generateBackstory,
   } = useTimeBooth();
 
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
@@ -89,8 +91,11 @@ const TimeBooth: React.FC = () => {
         throw new Error('Year and location are required');
       }
 
-      // First check if we already have this scene
-      const existingImageUrl = await checkExistingScene();
+      // Start both scene and backstory generation in parallel
+      const [existingImageUrl, backstoryPromise] = await Promise.all([
+        checkExistingScene(),
+        generateBackstory()
+      ]);
       
       let imageUrl;
       if (existingImageUrl) {
@@ -112,13 +117,16 @@ const TimeBooth: React.FC = () => {
         await saveScene(imageUrl);
       }
 
+      // Wait for backstory to complete
+      const backstory = await backstoryPromise;
+      if (!backstory) {
+        throw new Error('Failed to generate backstory');
+      }
+
       console.log('Setting background image:', imageUrl);
       setBackgroundImage(imageUrl);
       setIsGeneratingScene(false);
       setIsPreparingCall(true);
-
-      // Don't show the phone button immediately - wait for the agent to be ready
-      // The phone button will be shown when isPreparingCall is true AND the agent is ready
     } catch (error) {
       console.error('Failed to generate scene:', error);
       toast.error('Failed to generate scene');
