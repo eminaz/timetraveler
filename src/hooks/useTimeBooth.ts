@@ -93,8 +93,8 @@ export const useTimeBooth = () => {
 
       if (data.audio_url) {
         ringbackAudioRef.current = new Audio(data.audio_url);
-        ringbackAudioRef.current.volume = 0.1; // Reduce volume to 10%
-        ringbackAudioRef.current.load(); // Preload the audio
+        ringbackAudioRef.current.volume = 0.1;
+        ringbackAudioRef.current.load();
       }
 
       setState(prev => ({ ...prev, ringbackToneUrl: data.audio_url }));
@@ -111,12 +111,11 @@ export const useTimeBooth = () => {
     try {
       setState(prev => ({ ...prev, hasBackstory: false }));
       
-      // Check if backstory exists in database
       const { data: existingBackstory } = await supabase
         .from('backstories')
         .select('combined_backstory')
         .eq('year', state.year)
-        .eq('location', state.location.trim())  // Add trim() here
+        .eq('location', state.location.trim())
         .eq('persona', state.persona)
         .maybeSingle();
 
@@ -134,7 +133,7 @@ export const useTimeBooth = () => {
         body: { 
           prompt: 'generate backstory',
           year: state.year,
-          location: state.location.trim(),  // Add trim() here
+          location: state.location.trim(),
           useDeepseek: true,
           persona: state.persona
         }
@@ -147,12 +146,11 @@ export const useTimeBooth = () => {
 
       console.log('Generated backstory:', data.text);
       
-      // Save the new backstory
       const { error: saveError } = await supabase
         .from('backstories')
         .insert([{
           year: state.year,
-          location: state.location.trim(),  // Add trim() here
+          location: state.location.trim(),
           combined_backstory: data.text,
           persona: state.persona
         }]);
@@ -188,7 +186,7 @@ export const useTimeBooth = () => {
         .from('backstories')
         .select('combined_backstory')
         .eq('year', state.year)
-        .eq('location', state.location.trim())  // Add trim() here
+        .eq('location', state.location.trim())
         .eq('persona', state.persona)
         .maybeSingle();
 
@@ -203,8 +201,8 @@ export const useTimeBooth = () => {
 
       console.log('Initializing ElevenLabs session...');
       const agentId = state.persona === 'girlfriend' ? 
-        'T3V3l6ob4NjAgncL6RTX' : // Girlfriend voice
-        'XWcySB7eGEOQPmqtfR3a';  // Homie voice
+        'T3V3l6ob4NjAgncL6RTX' : 
+        'XWcySB7eGEOQPmqtfR3a';
 
       conversationRef.current = await Conversation.startSession({
         agentId: agentId,
@@ -279,7 +277,7 @@ export const useTimeBooth = () => {
     if (state.ringbackToneUrl) {
       if (!ringbackAudioRef.current) {
         ringbackAudioRef.current = new Audio(state.ringbackToneUrl);
-        ringbackAudioRef.current.volume = 0.1; // Reduce volume to 10%
+        ringbackAudioRef.current.volume = 0.1;
       }
       ringbackAudioRef.current.loop = true;
       try {
@@ -293,10 +291,13 @@ export const useTimeBooth = () => {
     const delay = Math.floor(Math.random() * 4000) + 1000;
     console.log(`Will pick up in ${delay}ms`);
     
-    setTimeout(async () => {
-      setState(prev => ({ ...prev, isPickedUp: true }));
-      await connectWebRTC();
-    }, delay);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    console.log('Starting call with persona:', state.persona);
+    
+    setState(prev => ({ ...prev, isPickedUp: true }));
+    await connectWebRTC();
   };
 
   const hangupPhone = () => {
@@ -345,10 +346,10 @@ export const useTimeBooth = () => {
   };
 
   const setPersona = (persona: 'girlfriend' | 'homie') => {
+    console.log('Setting persona to:', persona);
     return new Promise<void>((resolve) => {
       setState(prev => ({ ...prev, persona }));
-      // Use requestAnimationFrame to ensure state is updated
-      requestAnimationFrame(() => resolve());
+      setTimeout(resolve, 50);
     });
   };
 
