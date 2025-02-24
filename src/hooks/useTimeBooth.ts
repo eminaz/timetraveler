@@ -139,13 +139,11 @@ export const useTimeBooth = () => {
     try {
       setState(prev => ({ ...prev, isConnecting: true }));
       
-      // Stop ringback tone if playing
       if (ringbackAudioRef.current) {
         ringbackAudioRef.current.pause();
         ringbackAudioRef.current = null;
       }
 
-      // Use existing backstory since it was generated during time travel
       const backstory = state.generatedPrompt;
       if (!backstory) {
         throw new Error('No backstory available');
@@ -196,8 +194,10 @@ export const useTimeBooth = () => {
             prompt: {
               prompt: backstory,
             },
-            firstMessage: "Hello? Who's calling?",
-            language: 'en',
+            firstMessage: state.persona === 'japanese' ? 
+              "もしもし? 誰?" : 
+              "Hey babe, I was just thinking about you! What's up?",
+            language: state.persona === 'japanese' ? 'ja' : 'en',
           },
         },
       });
