@@ -16,6 +16,7 @@ export type Database = {
           dialogue_backstory: string | null
           id: string
           location: string
+          persona: string
           template_backstory: string | null
           year: number
         }
@@ -25,6 +26,7 @@ export type Database = {
           dialogue_backstory?: string | null
           id?: string
           location: string
+          persona?: string
           template_backstory?: string | null
           year: number
         }
@@ -34,6 +36,7 @@ export type Database = {
           dialogue_backstory?: string | null
           id?: string
           location?: string
+          persona?: string
           template_backstory?: string | null
           year?: number
         }
