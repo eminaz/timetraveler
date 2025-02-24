@@ -1,6 +1,5 @@
-
 import React, { useState, useRef } from 'react';
-import { Phone, Rocket, ArrowLeft, User, UserRound } from 'lucide-react';
+import { Phone, Rocket, ArrowLeft } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { useTimeBooth } from '../hooks/useTimeBooth';
@@ -158,6 +157,13 @@ const TimeBooth: React.FC = () => {
     }
   };
 
+  const handleCall = (selectedPersona: 'girlfriend' | 'homie') => {
+    setPersona(selectedPersona);
+    if (!isPickedUp) {
+      callGirlfriend();
+    }
+  };
+
   React.useEffect(() => {
     if (isPreparingCall && !isConnecting && !isPickedUp && hasBackstory) {
       setShowPhoneButton(true);
@@ -179,35 +185,14 @@ const TimeBooth: React.FC = () => {
       } : undefined}
     >
       {hasStartedTimeTravel && (
-        <>
-          <Button
-            variant="outline"
-            onClick={exitTimeTravel}
-            className="fixed top-4 right-4 bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm z-50"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Exit Time Travel
-          </Button>
-          
-          <div className="fixed top-4 left-4 z-50 flex gap-4">
-            <Button
-              variant={persona === 'girlfriend' ? 'default' : 'outline'}
-              onClick={() => setPersona('girlfriend')}
-              className="bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm"
-            >
-              <UserRound className="w-4 h-4 mr-2" />
-              Girlfriend
-            </Button>
-            <Button
-              variant={persona === 'homie' ? 'default' : 'outline'}
-              onClick={() => setPersona('homie')}
-              className="bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm"
-            >
-              <User className="w-4 h-4 mr-2" />
-              Homie
-            </Button>
-          </div>
-        </>
+        <Button
+          variant="outline"
+          onClick={exitTimeTravel}
+          className="fixed top-4 right-4 bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm z-50"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Exit Time Travel
+        </Button>
       )}
 
       {!hasStartedTimeTravel && (
@@ -264,16 +249,36 @@ const TimeBooth: React.FC = () => {
       )}
 
       {(showPhoneButton || isPickedUp) && (
-        <div className="fixed top-24 right-8 z-40">
-          <div
-            className={cn(
-              "phone flex items-center justify-center cursor-pointer",
-              isRinging && "animate-ring"
-            )}
-            onClick={isPickedUp ? hangupPhone : callGirlfriend}
-          >
-            <Phone className="w-8 h-8 text-booth-dark" />
-          </div>
+        <div className="fixed top-24 right-8 z-40 flex flex-col gap-4">
+          {isPickedUp ? (
+            <div
+              className="phone flex items-center justify-center cursor-pointer"
+              onClick={hangupPhone}
+            >
+              <Phone className="w-8 h-8 text-booth-dark rotate-135" />
+            </div>
+          ) : (
+            <>
+              <div
+                className={cn(
+                  "phone flex items-center justify-center cursor-pointer",
+                  isRinging && persona === 'girlfriend' && "animate-ring"
+                )}
+                onClick={() => handleCall('girlfriend')}
+              >
+                <Phone className="w-8 h-8 text-pink-400" />
+              </div>
+              <div
+                className={cn(
+                  "phone flex items-center justify-center cursor-pointer",
+                  isRinging && persona === 'homie' && "animate-ring"
+                )}
+                onClick={() => handleCall('homie')}
+              >
+                <Phone className="w-8 h-8 text-blue-400" />
+              </div>
+            </>
+          )}
         </div>
       )}
 
