@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
@@ -8,7 +7,6 @@ import { cn } from '../lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Define local types for the scenes table
 type Scene = {
   id: string;
   year: number;
@@ -92,12 +90,15 @@ const TimeBooth: React.FC = () => {
         throw new Error('Year and location are required');
       }
 
-      // Start scene, backstory, and ringback tone generation in parallel
-      const [existingImageUrl, backstoryPromise, ringbackTonePromise] = await Promise.all([
+      const [existingImageUrl, backstoryPromise] = await Promise.all([
         checkExistingScene(),
         generateBackstory(),
-        generateRingbackTone()
       ]);
+
+      generateRingbackTone().catch(error => {
+        console.error('Failed to generate ringback tone:', error);
+        // Just log the error, don't stop the process
+      });
       
       let imageUrl;
       if (existingImageUrl) {
@@ -118,18 +119,10 @@ const TimeBooth: React.FC = () => {
         await saveScene(imageUrl);
       }
 
-      // Wait for backstory and ringback tone to complete
-      const [backstory, ringbackTone] = await Promise.all([
-        backstoryPromise,
-        ringbackTonePromise
-      ]);
+      const backstory = await backstoryPromise;
       
       if (!backstory) {
         throw new Error('Failed to generate backstory');
-      }
-
-      if (!ringbackTone) {
-        throw new Error('Failed to generate ringback tone');
       }
 
       console.log('Setting background image:', imageUrl);
@@ -161,9 +154,7 @@ const TimeBooth: React.FC = () => {
     }
   };
 
-  // Effect to handle phone button display
   React.useEffect(() => {
-    // Show phone button when scene is ready AND backstory is generated
     if (isPreparingCall && !isConnecting && !isPickedUp && hasBackstory) {
       setShowPhoneButton(true);
     } else {
@@ -195,7 +186,6 @@ const TimeBooth: React.FC = () => {
       )}
 
       {!hasStartedTimeTravel ? (
-        // Initial UI for selecting year and location
         <div className="min-h-screen flex items-center justify-center p-6">
           <div className="phone-booth">
             <div className="phone-booth-window">
