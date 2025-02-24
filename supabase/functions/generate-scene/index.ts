@@ -46,7 +46,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         prompt: prompt,
-        image_size: "1024x1024",
+        image_size: "square_hd", // Changed to use a valid image size constant
         seed: Math.floor(Math.random() * 1000000)
       }),
     });
