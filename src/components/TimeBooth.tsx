@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
@@ -28,6 +27,7 @@ const TimeBooth: React.FC = () => {
     message,
     persona,
     isConnecting,
+    hasBackstory,
     setYear,
     setLocation,
     pickupPhone,
@@ -155,7 +155,8 @@ const TimeBooth: React.FC = () => {
 
   // Effect to handle phone ringing when agent is ready
   React.useEffect(() => {
-    if (isPreparingCall && !isConnecting && !isPickedUp) {
+    // Only show phone and play ring when scene is ready AND backstory is generated
+    if (isPreparingCall && !isConnecting && !isPickedUp && hasBackstory) {
       setShowPhoneButton(true);
       // Create new audio element and store it in ref
       audioRef.current = new Audio('/phone-ring.mp3');
@@ -164,7 +165,7 @@ const TimeBooth: React.FC = () => {
         console.error('Failed to play audio:', error);
       });
     }
-  }, [isPreparingCall, isConnecting, isPickedUp]);
+  }, [isPreparingCall, isConnecting, isPickedUp, hasBackstory]);
 
   return (
     <div 

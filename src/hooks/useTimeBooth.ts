@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +15,7 @@ interface TimeBoothState {
   persona: 'japanese' | 'newyork';
   generatedPrompt: string | null;
   isConnecting: boolean;
+  hasBackstory: boolean;
 }
 
 class AudioQueue {
@@ -70,7 +70,8 @@ export const useTimeBooth = () => {
     message: '',
     persona: 'japanese',
     generatedPrompt: null,
-    isConnecting: false
+    isConnecting: false,
+    hasBackstory: false
   });
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -82,6 +83,8 @@ export const useTimeBooth = () => {
   const generateBackstory = async () => {
     console.log('Generating backstory for:', { year: state.year, location: state.location });
     try {
+      setState(prev => ({ ...prev, hasBackstory: false }));
+      
       const { data, error } = await supabase.functions.invoke('chat-voice', {
         body: { 
           prompt: 'generate backstory',
@@ -97,11 +100,16 @@ export const useTimeBooth = () => {
       }
 
       console.log('Generated backstory:', data.text);
-      setState(prev => ({ ...prev, generatedPrompt: data.text }));
+      setState(prev => ({ 
+        ...prev, 
+        generatedPrompt: data.text,
+        hasBackstory: true
+      }));
       return data.text;
     } catch (error) {
       console.error('Failed to generate backstory:', error);
       toast.error('Failed to generate character backstory');
+      setState(prev => ({ ...prev, hasBackstory: false }));
       return null;
     }
   };
@@ -134,7 +142,8 @@ export const useTimeBooth = () => {
             isPickedUp: false,
             isRinging: true,
             message: '',
-            isConnecting: false
+            isConnecting: false,
+            hasBackstory: false
           }));
         },
         onError: (error) => {
@@ -173,7 +182,8 @@ export const useTimeBooth = () => {
         ...prev, 
         isConnecting: false,
         isPickedUp: false,
-        isRinging: true 
+        isRinging: true,
+        hasBackstory: false
       }));
     }
   };
@@ -204,7 +214,8 @@ export const useTimeBooth = () => {
       message: '',
       isListening: false,
       isSpeaking: false,
-      isConnecting: false
+      isConnecting: false,
+      hasBackstory: false
     }));
   };
 
