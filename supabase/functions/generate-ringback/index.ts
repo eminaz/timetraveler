@@ -59,11 +59,13 @@ serve(async (req) => {
     }
 
     const audioData = await response.json();
-    const audioUrl = audioData.audio_url;
+    console.log('Fal.ai response:', audioData); // Log the full response
 
-    if (!audioUrl) {
-      throw new Error('No audio URL in response');
+    if (!audioData.audio_file?.url) {
+      throw new Error('No audio URL in response: ' + JSON.stringify(audioData));
     }
+
+    const audioUrl = audioData.audio_file.url;
 
     // Save the new tone to the database
     await supabase
