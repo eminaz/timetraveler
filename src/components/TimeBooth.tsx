@@ -166,9 +166,7 @@ const TimeBooth: React.FC = () => {
   const handleCall = async (selectedPersona: 'girlfriend' | 'homie') => {
     console.log('Handle call initiated for persona:', selectedPersona);
     if (!isPickedUp) {
-      await setPersona(selectedPersona);
-      console.log('Persona set, starting call...');
-      callGirlfriend();
+      callGirlfriend(selectedPersona);
     }
   };
 

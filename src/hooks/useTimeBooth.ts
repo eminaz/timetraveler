@@ -173,7 +173,7 @@ export const useTimeBooth = () => {
     }
   };
 
-  const connectWebRTC = async () => {
+  const connectWebRTC = async (selectedPersona: 'girlfriend' | 'homie') => {
     try {
       setState(prev => ({ ...prev, isConnecting: true }));
       
@@ -187,7 +187,7 @@ export const useTimeBooth = () => {
         .select('combined_backstory')
         .eq('year', state.year)
         .eq('location', state.location.trim())
-        .eq('persona', state.persona)
+        .eq('persona', selectedPersona)
         .maybeSingle();
 
       const backstory = existingBackstory?.combined_backstory || state.generatedPrompt;
@@ -199,8 +199,8 @@ export const useTimeBooth = () => {
       console.log('Requesting microphone access...');
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      console.log('Initializing ElevenLabs session with persona:', state.persona);
-      const agentId = state.persona === 'girlfriend' ? 
+      console.log('Initializing ElevenLabs session with persona:', selectedPersona);
+      const agentId = selectedPersona === 'girlfriend' ? 
         'T3V3l6ob4NjAgncL6RTX' : 
         'XWcySB7eGEOQPmqtfR3a';
 
@@ -218,29 +218,12 @@ export const useTimeBooth = () => {
         },
         onDisconnect: () => {
           console.log('ElevenLabs Disconnected');
-          setState(prev => ({ 
-            ...prev, 
-            isListening: false, 
-            isPickedUp: false,
-            isRinging: false,
-            message: '',
-            isConnecting: false,
-            hasBackstory: false
-          }));
+          cleanupConnection();
         },
         onError: (error) => {
           console.error('ElevenLabs Error:', error);
           toast.error('Connection error');
-          setState(prev => ({ ...prev, isConnecting: false }));
-          setState(prev => ({ 
-            ...prev, 
-            isListening: false, 
-            isPickedUp: false,
-            isRinging: false,
-            message: '',
-            isConnecting: false,
-            hasBackstory: false
-          }));
+          cleanupConnection();
         },
         onModeChange: (mode) => {
           console.log('Mode changed:', mode);
@@ -260,7 +243,7 @@ export const useTimeBooth = () => {
             prompt: {
               prompt: backstory,
             },
-            firstMessage: state.persona === 'girlfriend' ? 
+            firstMessage: selectedPersona === 'girlfriend' ? 
               "Hey sweetheart! I was just thinking about you!" : 
               "Yo! What's good? Just the person I wanted to hear from!",
             language: 'en',
@@ -271,17 +254,11 @@ export const useTimeBooth = () => {
     } catch (error) {
       console.error('Failed to start conversation:', error);
       toast.error('Failed to start conversation');
-      setState(prev => ({ 
-        ...prev, 
-        isConnecting: false,
-        isPickedUp: false,
-        isRinging: false,
-        hasBackstory: false
-      }));
+      cleanupConnection();
     }
   };
 
-  const callGirlfriend = async () => {
+  const callGirlfriend = async (selectedPersona: 'girlfriend' | 'homie') => {
     if (state.isConnecting || state.isPickedUp) return;
     
     cleanupConnection();
@@ -289,6 +266,7 @@ export const useTimeBooth = () => {
     setState(prev => ({
       ...prev,
       isRinging: true,
+      persona: selectedPersona,
     }));
 
     if (state.ringbackToneUrl) {
@@ -306,15 +284,14 @@ export const useTimeBooth = () => {
     }
 
     const delay = Math.floor(Math.random() * 4000) + 1000;
-    console.log(`Will pick up in ${delay}ms with persona:`, state.persona);
+    console.log(`Will pick up in ${delay}ms with persona:`, selectedPersona);
     
-    await new Promise(resolve => setTimeout(resolve, 100));
     await new Promise(resolve => setTimeout(resolve, delay));
     
-    console.log('Starting call with persona:', state.persona);
+    console.log('Starting call with persona:', selectedPersona);
     
     setState(prev => ({ ...prev, isPickedUp: true }));
-    await connectWebRTC();
+    await connectWebRTC(selectedPersona);
   };
 
   const hangupPhone = () => {
