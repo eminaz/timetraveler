@@ -38,36 +38,47 @@ serve(async (req) => {
       );
     }
 
-    // Generate new ringback tone using fal.ai
-    const response = await fetch('https://api.fal.ai/stable-audio', {
+    // Generate new ringback tone using fal.ai REST API
+    const response = await fetch('https://rest.fal.ai/api/v1/music/generate', {
       method: 'POST',
       headers: {
-        'Authorization': `Key ${Deno.env.get('FAL_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('FAL_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        prompt: `phone ringback tone from ${year}, old telephone style`,
-        model_name: 'melody',
-        duration_seconds: 5,
+        model: 'stable-audio',
+        input: {
+          prompt: `phone ringback tone from ${year}, old telephone style`,
+          duration: 5,
+          model_name: 'melody',
+          seed: 42
+        }
       }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to generate audio');
+      const errorData = await response.text();
+      console.error('Fal.ai API error:', errorData);
+      throw new Error(`Failed to generate audio: ${errorData}`);
     }
 
     const audioData = await response.json();
+    const audioUrl = audioData.audio_url || audioData.output?.audio_url;
+
+    if (!audioUrl) {
+      throw new Error('No audio URL in response');
+    }
 
     // Save the new tone to the database
     await supabase
       .from('ringback_tones')
       .insert([{ 
         year: baseYear,
-        audio_url: audioData.audio_url,
+        audio_url: audioUrl,
       }]);
 
     return new Response(
-      JSON.stringify({ audio_url: audioData.audio_url }),
+      JSON.stringify({ audio_url: audioUrl }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
