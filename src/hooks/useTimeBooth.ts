@@ -223,15 +223,22 @@ export const useTimeBooth = () => {
       isRinging: true,
     }));
 
-    // Play ringback tone
+    // Play ringback tone if available
     if (state.ringbackToneUrl) {
       ringbackAudioRef.current = new Audio(state.ringbackToneUrl);
       ringbackAudioRef.current.loop = true;
-      await ringbackAudioRef.current.play();
+      try {
+        await ringbackAudioRef.current.play();
+        console.log('Playing ringback tone:', state.ringbackToneUrl);
+      } catch (error) {
+        console.error('Failed to play ringback tone:', error);
+      }
     }
 
     // Random delay between 1-5 seconds before pickup
     const delay = Math.floor(Math.random() * 4000) + 1000;
+    console.log(`Will pick up in ${delay}ms`);
+    
     setTimeout(async () => {
       setState(prev => ({ ...prev, isPickedUp: true }));
       await connectWebRTC();
