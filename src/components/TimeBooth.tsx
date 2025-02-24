@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Phone, Rocket, ArrowLeft } from 'lucide-react';
 import { Input } from './ui/input';
@@ -49,6 +50,13 @@ const TimeBooth: React.FC = () => {
     video.preload = 'auto';
     video.src = 'https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4';
   }, []);
+
+  // Update this useEffect to handle the hangup case
+  React.useEffect(() => {
+    if (isPreparingCall && !isConnecting && !isPickedUp && hasBackstory) {
+      setShowPhoneButton(true);
+    }
+  }, [isPreparingCall, isConnecting, isPickedUp, hasBackstory]);
 
   const checkExistingScene = async () => {
     try {
@@ -164,13 +172,11 @@ const TimeBooth: React.FC = () => {
     }
   };
 
-  React.useEffect(() => {
-    if (isPreparingCall && !isConnecting && !isPickedUp && hasBackstory) {
-      setShowPhoneButton(true);
-    } else {
-      setShowPhoneButton(false);
-    }
-  }, [isPreparingCall, isConnecting, isPickedUp, hasBackstory]);
+  const handleHangup = () => {
+    hangupPhone();
+    // After hanging up, we want to show the call buttons again
+    setShowPhoneButton(true);
+  };
 
   return (
     <div 
@@ -254,7 +260,7 @@ const TimeBooth: React.FC = () => {
             <Button
               variant="destructive"
               className="bg-booth-red hover:bg-booth-dark text-white"
-              onClick={hangupPhone}
+              onClick={handleHangup}
             >
               <Phone className="w-4 h-4 rotate-135" />
               Hang Up
