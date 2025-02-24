@@ -42,7 +42,7 @@ serve(async (req) => {
     const response = await fetch('https://110602490-stable-audio.gateway.alpha.fal.ai/', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('FAL_KEY')}`,
+        'Authorization': `Key ${Deno.env.get('FAL_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
