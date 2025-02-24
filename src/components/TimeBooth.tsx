@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Phone, Rocket, ArrowLeft, Loader2 } from 'lucide-react';
+import { Phone, Rocket, ArrowLeft } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { useTimeBooth } from '../hooks/useTimeBooth';
@@ -42,6 +42,12 @@ const TimeBooth: React.FC = () => {
   const [hasStartedTimeTravel, setHasStartedTimeTravel] = useState(false);
   const [showPhoneButton, setShowPhoneButton] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  React.useEffect(() => {
+    const video = document.createElement('video');
+    video.preload = 'auto';
+    video.src = 'https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4';
+  }, []);
 
   const checkExistingScene = async () => {
     try {
@@ -268,8 +274,7 @@ const TimeBooth: React.FC = () => {
           >
             <source src="https://v3.fal.media/files/kangaroo/JTagMWnnGE8MMJOqhuNAv_output.mp4" type="video/mp4" />
           </video>
-          <div className="relative text-center text-white space-y-4 bg-black/50 p-6 rounded-lg">
-            <Loader2 className="w-12 h-12 animate-spin mx-auto" />
+          <div className="relative text-center text-white space-y-4 p-6 rounded-lg">
             <p className="text-xl">Generating your time travel destination...</p>
           </div>
         </div>
