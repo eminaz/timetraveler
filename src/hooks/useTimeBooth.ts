@@ -199,10 +199,16 @@ export const useTimeBooth = () => {
       console.log('Requesting microphone access...');
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      console.log('Initializing ElevenLabs session...');
+      console.log('Initializing ElevenLabs session with persona:', state.persona);
       const agentId = state.persona === 'girlfriend' ? 
         'T3V3l6ob4NjAgncL6RTX' : 
         'XWcySB7eGEOQPmqtfR3a';
+
+      if (conversationRef.current) {
+        console.log('Cleaning up existing conversation before starting new one');
+        conversationRef.current.endSession();
+        conversationRef.current = null;
+      }
 
       conversationRef.current = await Conversation.startSession({
         agentId: agentId,
@@ -226,6 +232,15 @@ export const useTimeBooth = () => {
           console.error('ElevenLabs Error:', error);
           toast.error('Connection error');
           setState(prev => ({ ...prev, isConnecting: false }));
+          setState(prev => ({ 
+            ...prev, 
+            isListening: false, 
+            isPickedUp: false,
+            isRinging: false,
+            message: '',
+            isConnecting: false,
+            hasBackstory: false
+          }));
         },
         onModeChange: (mode) => {
           console.log('Mode changed:', mode);
@@ -269,6 +284,8 @@ export const useTimeBooth = () => {
   const callGirlfriend = async () => {
     if (state.isConnecting || state.isPickedUp) return;
     
+    cleanupConnection();
+    
     setState(prev => ({
       ...prev,
       isRinging: true,
@@ -289,7 +306,7 @@ export const useTimeBooth = () => {
     }
 
     const delay = Math.floor(Math.random() * 4000) + 1000;
-    console.log(`Will pick up in ${delay}ms`);
+    console.log(`Will pick up in ${delay}ms with persona:`, state.persona);
     
     await new Promise(resolve => setTimeout(resolve, 100));
     await new Promise(resolve => setTimeout(resolve, delay));
@@ -301,27 +318,7 @@ export const useTimeBooth = () => {
   };
 
   const hangupPhone = () => {
-    if (conversationRef.current) {
-      conversationRef.current.endSession();
-      conversationRef.current = null;
-    }
-
-    if (ringbackAudioRef.current) {
-      ringbackAudioRef.current.pause();
-      ringbackAudioRef.current = null;
-    }
-
-    setState(prev => ({
-      ...prev,
-      isRinging: false,
-      isPickedUp: false,
-      generatedImage: null,
-      message: '',
-      isListening: false,
-      isSpeaking: false,
-      isConnecting: false,
-      hasBackstory: false
-    }));
+    cleanupConnection();
   };
 
   const speak = async (text: string) => {
@@ -347,10 +344,36 @@ export const useTimeBooth = () => {
 
   const setPersona = (persona: 'girlfriend' | 'homie') => {
     console.log('Setting persona to:', persona);
+    cleanupConnection();
+    
     return new Promise<void>((resolve) => {
       setState(prev => ({ ...prev, persona }));
       setTimeout(resolve, 50);
     });
+  };
+
+  const cleanupConnection = () => {
+    if (conversationRef.current) {
+      conversationRef.current.endSession();
+      conversationRef.current = null;
+    }
+
+    if (ringbackAudioRef.current) {
+      ringbackAudioRef.current.pause();
+      ringbackAudioRef.current = null;
+    }
+
+    setState(prev => ({
+      ...prev,
+      isRinging: false,
+      isPickedUp: false,
+      generatedImage: null,
+      message: '',
+      isListening: false,
+      isSpeaking: false,
+      isConnecting: false,
+      hasBackstory: false
+    }));
   };
 
   return {
