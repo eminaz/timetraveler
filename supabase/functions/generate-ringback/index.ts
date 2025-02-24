@@ -38,35 +38,66 @@ serve(async (req) => {
       );
     }
 
-    // Generate new ringback tone using fal.ai REST API
-    const response = await fetch('https://rest.fal.ai/api/v1/music/generate', {
+    // Generate new ringback tone using fal.ai queue API
+    const queueResponse = await fetch('https://queue.fal.run/fal-ai/stable-audio', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('FAL_KEY')}`,
+        'Authorization': `Key ${Deno.env.get('FAL_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'stable-audio',
-        input: {
-          prompt: `phone ringback tone from ${year}, old telephone style`,
-          duration: 5,
-          model_name: 'melody',
-          seed: 42
-        }
+        prompt: `phone ringback tone from ${year}, old telephone style`,
       }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Fal.ai API error:', errorData);
-      throw new Error(`Failed to generate audio: ${errorData}`);
+    if (!queueResponse.ok) {
+      const errorData = await queueResponse.text();
+      console.error('Fal.ai queue API error:', errorData);
+      throw new Error(`Failed to queue audio generation: ${errorData}`);
     }
 
-    const audioData = await response.json();
-    const audioUrl = audioData.audio_url || audioData.output?.audio_url;
+    const queueData = await queueResponse.json();
+    console.log('Queue response:', queueData);
 
-    if (!audioUrl) {
-      throw new Error('No audio URL in response');
+    if (!queueData.request_id) {
+      throw new Error('No request ID in queue response');
+    }
+
+    // Poll for the result
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds timeout
+    let resultData = null;
+
+    while (attempts < maxAttempts) {
+      const resultResponse = await fetch(`https://queue.fal.run/fal-ai/stable-audio/status/${queueData.request_id}`, {
+        headers: {
+          'Authorization': `Key ${Deno.env.get('FAL_KEY')}`,
+        },
+      });
+
+      if (!resultResponse.ok) {
+        console.error('Error checking status:', await resultResponse.text());
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        attempts++;
+        continue;
+      }
+
+      const status = await resultResponse.json();
+      console.log('Status response:', status);
+
+      if (status.status === 'COMPLETED' && status.output?.audio_url) {
+        resultData = status.output;
+        break;
+      } else if (status.status === 'FAILED') {
+        throw new Error('Audio generation failed: ' + status.error);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      attempts++;
+    }
+
+    if (!resultData?.audio_url) {
+      throw new Error('Failed to get audio URL after maximum attempts');
     }
 
     // Save the new tone to the database
@@ -74,11 +105,11 @@ serve(async (req) => {
       .from('ringback_tones')
       .insert([{ 
         year: baseYear,
-        audio_url: audioUrl,
+        audio_url: resultData.audio_url,
       }]);
 
     return new Response(
-      JSON.stringify({ audio_url: audioUrl }),
+      JSON.stringify({ audio_url: resultData.audio_url }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
